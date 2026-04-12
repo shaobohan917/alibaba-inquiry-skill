@@ -1,5 +1,6 @@
 const BrowserManager = require('./src/browser');
 const InquiryScraper = require('./src/inquiry-scraper');
+const AIReplier = require('./src/ai-replier');
 const { loadConfig, delay, getEnv } = require('./src/config');
 
 const ALIBABA_MESSAGE_URL = getEnv(
@@ -12,6 +13,7 @@ class AlibabaInquiryBot {
     this.config = loadConfig();
     this.browser = null;
     this.scraper = null;
+    this.aiReplier = new AIReplier();
   }
 
   async start() {
@@ -239,14 +241,9 @@ class AlibabaInquiryBot {
     });
     console.log();
 
-    // 生成回复（固定文本）
+    // 生成回复（基于知识库话术匹配 + AI 优化）
     console.log('✍️  准备回复内容...');
-    const reply = `您好，感谢您的询盘！
-
-我们已收到您的消息，会尽快给您回复。
-
-祝好，
-[您的名字]`;
+    const reply = await this.aiReplier.generateReply(chatHistory);
 
     console.log('\n📝 回复内容:\n');
     console.log('─'.repeat(50));
