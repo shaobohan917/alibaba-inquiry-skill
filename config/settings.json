@@ -1,0 +1,28 @@
+{
+  "replyStyle": {
+    "tone": "professional",
+    "autoLanguage": true,
+    "signature": "Best regards,\n[Your Name]"
+  },
+  "llm": {
+    "baseUrl": "https://api.anthropic.com",
+    "apiKey": "",
+    "model": "claude-sonnet-4-5-20250929"
+  },
+  "automation": {
+    "autoFillReply": true,
+    "autoSend": false,
+    "delayBetweenActions": {
+      "min": 3000,
+      "max": 8000
+    }
+  },
+  "selectors": {
+    "inquiryList": ".inquiry-list, .message-list, [data-testid='message-list']",
+    "inquiryItem": ".inquiry-item, .message-item, [data-testid='message-item']",
+    "inquiryContent": ".inquiry-content, .message-content, [data-testid='message-content']",
+    "chatHistory": ".chat-history, .message-history, [data-testid='chat-history']",
+    "replyInput": ".reply-input, .message-input, [data-testid='reply-input']",
+    "sendButton": ".send-btn, [data-testid='send-btn']"
+  }
+}
