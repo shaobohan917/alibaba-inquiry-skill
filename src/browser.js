@@ -92,6 +92,14 @@ class BrowserManager {
       this.page = await this.context.newPage();
     }
 
+    // 加载保存的 Cookie（如果存在）
+    const cookies = this.loadCookies();
+    if (cookies && cookies.length > 0) {
+      console.log(`📍 加载 ${cookies.length} 个 Cookie...`);
+      await this.context.addCookies(cookies);
+      console.log('✓ Cookie 已加载，应已自动登录');
+    }
+
     console.log('✓ 已连接到 Chrome 窗口');
     return this.page;
   }
