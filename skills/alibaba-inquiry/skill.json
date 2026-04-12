@@ -1,0 +1,26 @@
+{
+  "name": "alibaba-inquiry",
+  "version": "1.0.0",
+  "description": "阿里巴巴国际站询盘自动回复 - 自动登录、读取询盘、AI 生成专业回复",
+  "author": "Your Name",
+  "repository": "https://github.com/yourusername/alibaba-inquiry-skill",
+  "commands": [
+    {
+      "name": "alibaba-inquiry",
+      "description": "处理阿里巴巴国际站询盘",
+      "usage": "/alibaba-inquiry [命令]",
+      "examples": [
+        "/alibaba-inquiry 开始处理询盘",
+        "/alibaba-inquiry 读取聊天记录",
+        "/alibaba-inquiry 生成回复"
+      ]
+    }
+  ],
+  "config": {
+    "required_env": [
+      "LLM_BASE_URL",
+      "LLM_API_KEY",
+      "LLM_MODEL"
+    ]
+  }
+}

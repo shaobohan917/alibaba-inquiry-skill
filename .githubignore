@@ -1,0 +1,27 @@
+# 构建输出
+build/
+
+# 依赖
+node_modules/
+
+# 环境变量
+.env
+
+# Cookie
+cookies/*.json
+
+# 日志
+*.log
+
+# 截图
+*.png
+*.gif
+
+# 系统文件
+.DS_Store
+
+# Chrome 数据目录
+.chrome-user-data/
+
+# Playwright MCP
+.playwright-mcp/

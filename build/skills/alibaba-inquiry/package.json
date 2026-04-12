@@ -1,0 +1,20 @@
+{
+  "name": "alibaba-inquiry",
+  "version": "1.0.0",
+  "description": "阿里巴巴国际站询盘自动回复 Skill",
+  "main": "index.js",
+  "scripts": {
+    "start": "node run.js",
+    "install-browsers": "npx playwright install chromium"
+  },
+  "keywords": ["alibaba", "inquiry", "auto-reply", "claude-code-skill"],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.4.1",
+    "openai": "^6.34.0",
+    "playwright": "^1.59.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
