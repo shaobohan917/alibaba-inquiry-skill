@@ -73,8 +73,9 @@ async function detectCurrentPage() {
         console.warn('Content Script 消息发送失败:', msgError);
         // Content Script 可能未加载，尝试通过 URL 判断
         if (tab.url.includes('feedback/all') || tab.url.includes('default.htm')) {
-          pageStatus.textContent = '询盘列表页 (URL 检测)';
+          pageStatus.textContent = '询盘列表页 (请刷新页面)';
           startBtn.disabled = false;
+          startBtn.textContent = '刷新页面后点击';
         } else {
           pageStatus.textContent = 'Content Script 未加载，请刷新页面';
           startBtn.disabled = true;
@@ -95,20 +96,25 @@ async function detectCurrentPage() {
  * 监听消息
  */
 function setupMessageListener() {
-  chrome.runtime.onMessage.addListener((request) => {
-    switch (request.type) {
-      case 'STATUS_UPDATE':
-        updateStatus(request.status, request.details);
-        break;
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    try {
+      switch (request.type) {
+        case 'STATUS_UPDATE':
+          updateStatus(request.status, request.details);
+          break;
 
-      case 'PROCESS_COMPLETE':
-        showComplete();
-        break;
+        case 'PROCESS_COMPLETE':
+          showComplete();
+          break;
 
-      case 'ERROR':
-        showError(request.message);
-        break;
+        case 'ERROR':
+          showError(request.message);
+          break;
+      }
+    } catch (error) {
+      console.error('处理消息失败:', error);
     }
+    return true;
   });
 }
 
