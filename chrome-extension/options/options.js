@@ -19,12 +19,19 @@ async function loadSettings() {
       autoProcess: true
     });
 
-    document.getElementById('api-key').value = result.apiKey;
-    document.getElementById('api-secret').value = result.apiSecret;
-    document.getElementById('reply-tone').value = result.replyTone;
-    document.getElementById('company-info').value = result.companyInfo;
-    document.getElementById('enable-notifications').checked = result.enableNotifications;
-    document.getElementById('auto-process').checked = result.autoProcess;
+    const apiKeyInput = document.getElementById('api-key');
+    const apiSecretInput = document.getElementById('api-secret');
+    const replyToneSelect = document.getElementById('reply-tone');
+    const companyInfoTextarea = document.getElementById('company-info');
+    const enableNotificationsCheckbox = document.getElementById('enable-notifications');
+    const autoProcessCheckbox = document.getElementById('auto-process');
+
+    if (apiKeyInput) apiKeyInput.value = result.apiKey;
+    if (apiSecretInput) apiSecretInput.value = result.apiSecret;
+    if (replyToneSelect) replyToneSelect.value = result.replyTone;
+    if (companyInfoTextarea) companyInfoTextarea.value = result.companyInfo;
+    if (enableNotificationsCheckbox) enableNotificationsCheckbox.checked = result.enableNotifications;
+    if (autoProcessCheckbox) autoProcessCheckbox.checked = result.autoProcess;
 
     console.log('设置已加载');
   } catch (error) {
@@ -38,13 +45,20 @@ async function loadSettings() {
  */
 async function saveSettings() {
   try {
+    const apiKeyInput = document.getElementById('api-key');
+    const apiSecretInput = document.getElementById('api-secret');
+    const replyToneSelect = document.getElementById('reply-tone');
+    const companyInfoTextarea = document.getElementById('company-info');
+    const enableNotificationsCheckbox = document.getElementById('enable-notifications');
+    const autoProcessCheckbox = document.getElementById('auto-process');
+
     const settings = {
-      apiKey: document.getElementById('api-key').value.trim(),
-      apiSecret: document.getElementById('api-secret').value.trim(),
-      replyTone: document.getElementById('reply-tone').value,
-      companyInfo: document.getElementById('company-info').value.trim(),
-      enableNotifications: document.getElementById('enable-notifications').checked,
-      autoProcess: document.getElementById('auto-process').checked
+      apiKey: apiKeyInput ? apiKeyInput.value.trim() : '',
+      apiSecret: apiSecretInput ? apiSecretInput.value.trim() : '',
+      replyTone: replyToneSelect ? replyToneSelect.value : 'professional',
+      companyInfo: companyInfoTextarea ? companyInfoTextarea.value.trim() : '',
+      enableNotifications: enableNotificationsCheckbox ? enableNotificationsCheckbox.checked : true,
+      autoProcess: autoProcessCheckbox ? autoProcessCheckbox.checked : true
     };
 
     await chrome.storage.sync.set(settings);
@@ -78,8 +92,11 @@ async function resetSettings() {
  * 绑定事件
  */
 function bindEvents() {
-  document.getElementById('save-btn').addEventListener('click', saveSettings);
-  document.getElementById('reset-btn').addEventListener('click', resetSettings);
+  const saveBtn = document.getElementById('save-btn');
+  const resetBtn = document.getElementById('reset-btn');
+
+  if (saveBtn) saveBtn.addEventListener('click', saveSettings);
+  if (resetBtn) resetBtn.addEventListener('click', resetSettings);
 }
 
 /**
@@ -87,10 +104,12 @@ function bindEvents() {
  */
 function showMessage(text, type = 'info') {
   const messageEl = document.getElementById('message');
-  messageEl.textContent = text;
-  messageEl.className = `message ${type} show`;
+  if (messageEl) {
+    messageEl.textContent = text;
+    messageEl.className = `message ${type} show`;
 
-  setTimeout(() => {
-    messageEl.className = 'message';
-  }, 3000);
+    setTimeout(() => {
+      messageEl.className = 'message';
+    }, 3000);
+  }
 }
