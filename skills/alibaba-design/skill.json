@@ -1,0 +1,27 @@
+{
+  "name": "alibaba-design",
+  "version": "1.0.0",
+  "description": "阿里国际站美工 Agent - 主图生成、详情页优化",
+  "author": "Your Name",
+  "repository": "https://github.com/yourusername/alibaba-inquiry-skill",
+  "commands": [
+    {
+      "name": "alibaba-design",
+      "description": "美工 Agent - 图片生成和优化",
+      "usage": "/alibaba-design [命令]",
+      "examples": [
+        "/alibaba-design 开始生成图片",
+        "/alibaba-design 优化低 CTR 产品",
+        "/alibaba-design 查看模板"
+      ]
+    }
+  ],
+  "config": {
+    "required_env": [
+      "LLM_BASE_URL",
+      "LLM_API_KEY",
+      "LLM_MODEL",
+      "ALIBABA_PRODUCT_URL"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "alibaba-procurement-skill",
+  "version": "1.0.0",
+  "description": "阿里国际站采购 Agent - 1688 选品、供应商管理",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ../../agents/procurement/index.js",
+    "test": "echo \"No tests specified\""
+  },
+  "keywords": [
+    "alibaba",
+    "procurement",
+    "claude-code-skill",
+    "ecommerce",
+    "sourcing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

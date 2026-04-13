@@ -1,0 +1,23 @@
+{
+  "name": "alibaba-sales-skill",
+  "version": "1.0.0",
+  "description": "阿里国际站业务员 Agent - 询盘处理、客户 CRM",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ../../agents/sales/index.js",
+    "test": "echo \"No tests specified\""
+  },
+  "keywords": [
+    "alibaba",
+    "sales",
+    "claude-code-skill",
+    "ecommerce",
+    "crm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

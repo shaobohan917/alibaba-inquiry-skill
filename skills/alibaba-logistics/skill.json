@@ -1,0 +1,28 @@
+{
+  "name": "alibaba-logistics",
+  "version": "1.0.0",
+  "description": "阿里国际站物流报价员 Agent - 货代比价、物流跟踪、双版本适配",
+  "author": "Your Name",
+  "repository": "https://github.com/yourusername/alibaba-logistics-skill",
+  "commands": [
+    {
+      "name": "alibaba-logistics",
+      "description": "物流报价员 Agent - 货代比价和物流跟踪",
+      "usage": "/alibaba-logistics [命令]",
+      "examples": [
+        "/alibaba-logistics 查看物流状态",
+        "/alibaba-logistics 货代比价",
+        "/alibaba-logistics 创建订单",
+        "/alibaba-logistics 查看指标 gold"
+      ]
+    }
+  ],
+  "config": {
+    "required_env": [
+      "LLM_BASE_URL",
+      "LLM_API_KEY",
+      "LLM_MODEL",
+      "SHOP_TYPE"
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "alibaba-supervisor",
+  "version": "1.0.0",
+  "description": "阿里国际站总监管 Agent - 任务分发、进度追踪、数据汇总看板",
+  "author": "Your Name",
+  "repository": "https://github.com/yourusername/alibaba-inquiry-skill",
+  "commands": [
+    {
+      "name": "alibaba-supervisor",
+      "description": "总监管 Agent - 任务分发和数据汇总",
+      "usage": "/alibaba-supervisor [命令]",
+      "examples": [
+        "/alibaba-supervisor 开始今日任务",
+        "/alibaba-supervisor 查看数据看板",
+        "/alibaba-supervisor 生成日报",
+        "/alibaba-supervisor 查看任务列表"
+      ]
+    }
+  ],
+  "config": {
+    "required_env": [
+      "LLM_BASE_URL",
+      "LLM_API_KEY",
+      "LLM_MODEL"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "alibaba-inventory-skill",
+  "version": "1.0.0",
+  "description": "阿里国际站库存 Agent - 库存监控、物流跟踪",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ../../agents/inventory/index.js",
+    "test": "echo \"No tests specified\""
+  },
+  "keywords": [
+    "alibaba",
+    "inventory",
+    "claude-code-skill",
+    "ecommerce",
+    "logistics"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
