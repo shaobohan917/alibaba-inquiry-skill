@@ -15,7 +15,8 @@
     "*://message.alibaba.com/*"
   ],
   "background": {
-    "service_worker": "background/service.js"
+    "service_worker": "background/service.js",
+    "type": "module"
   },
   "content_scripts": [
     {

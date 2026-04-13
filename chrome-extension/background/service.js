@@ -24,6 +24,35 @@ function updateStatus(status, details = {}) {
 }
 
 /**
+ * 向指定标签页发送消息
+ */
+async function sendMessageToTab(tabId, message) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, message, (response) => {
+      resolve(response);
+    });
+  });
+}
+
+/**
+ * 等待详情页加载
+ */
+function waitForDetailPage(tabId) {
+  return new Promise((resolve) => {
+    const checkUrl = () => {
+      chrome.tabs.get(tabId, (tab) => {
+        if (tab?.url?.includes('maDetail.htm') || tab?.url?.includes('conversation')) {
+          resolve();
+        } else {
+          setTimeout(checkUrl, 500);
+        }
+      });
+    };
+    checkUrl();
+  });
+}
+
+/**
  * 处理询盘流程
  */
 async function processInquiry(tabId) {
@@ -99,35 +128,6 @@ async function processInquiry(tabId) {
       message: error.message
     });
   }
-}
-
-/**
- * 向指定标签页发送消息
- */
-async function sendMessageToTab(tabId, message) {
-  return new Promise((resolve) => {
-    chrome.tabs.sendMessage(tabId, message, (response) => {
-      resolve(response);
-    });
-  });
-}
-
-/**
- * 等待详情页加载
- */
-function waitForDetailPage(tabId) {
-  return new Promise((resolve) => {
-    const checkUrl = () => {
-      chrome.tabs.get(tabId, (tab) => {
-        if (tab?.url?.includes('maDetail.htm') || tab?.url?.includes('conversation')) {
-          resolve();
-        } else {
-          setTimeout(checkUrl, 500);
-        }
-      });
-    };
-    checkUrl();
-  });
 }
 
 // 监听来自 Popup 的消息
