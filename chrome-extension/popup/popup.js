@@ -1,144 +1,148 @@
-// 阿里巴巴询盘助手 - Popup 脚本
+/**
+ * Popup 界面逻辑
+ */
 
-document.addEventListener('DOMContentLoaded', () => {
-  initPopup();
-});
+const PROCESS_STEPS = [
+  { id: 'detecting', label: '检测页面' },
+  { id: 'clicking', label: '点击询盘' },
+  { id: 'waiting', label: '等待加载' },
+  { id: 'reading', label: '读取聊天' },
+  { id: 'generating', label: '生成回复' },
+  { id: 'filling', label: '填充回复' },
+  { id: 'complete', label: '完成' }
+];
+
+let currentPageType = null;
+
+// DOM 元素
+const startBtn = document.getElementById('start-btn');
+const pageStatus = document.getElementById('page-status');
+const statusIcon = document.getElementById('status-icon');
+const statusText = document.getElementById('status-text');
+const progressArea = document.getElementById('progress-area');
+const progressFill = document.getElementById('progress-fill');
+const progressSteps = document.getElementById('progress-steps');
 
 /**
- * 初始化 Popup
+ * 初始化
  */
-async function initPopup() {
-  // 检查登录状态
-  await checkLoginStatus();
+async function init() {
+  // 检测当前页面
+  await detectCurrentPage();
 
-  // 检查当前页面状态
-  await checkCurrentPage();
-
-  // 绑定事件
-  bindEvents();
+  // 监听 Service Worker 消息
+  setupMessageListener();
 }
 
 /**
- * 检查登录状态
+ * 检测当前页面
  */
-async function checkLoginStatus() {
-  const loginStatusEl = document.getElementById('login-status');
-
+async function detectCurrentPage() {
   try {
-    // 检查是否有阿里巴巴的 cookie
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    const currentTab = tabs[0];
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    if (currentTab?.url?.includes('message.alibaba.com')) {
-      loginStatusEl.textContent = '已登录';
-      loginStatusEl.classList.add('success');
-    } else {
-      loginStatusEl.textContent = '未检测';
-      loginStatusEl.style.color = '#999';
-    }
-  } catch (error) {
-    loginStatusEl.textContent = '检测失败';
-    loginStatusEl.classList.add('error');
-    console.error('检查登录状态失败:', error);
-  }
-}
-
-/**
- * 检查当前页面状态
- */
-async function checkCurrentPage() {
-  const pageStatusEl = document.getElementById('page-status');
-
-  try {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    const currentTab = tabs[0];
-
-    if (currentTab?.url?.includes('message.alibaba.com')) {
-      pageStatusEl.textContent = '询盘页面';
-      pageStatusEl.classList.add('success');
-    } else if (currentTab?.url?.includes('alibaba.com')) {
-      pageStatusEl.textContent = '阿里巴巴网站';
-      pageStatusEl.style.color = '#f59e0b';
-    } else {
-      pageStatusEl.textContent = '其他页面';
-      pageStatusEl.style.color = '#999';
-    }
-  } catch (error) {
-    pageStatusEl.textContent = '检测失败';
-    pageStatusEl.classList.add('error');
-    console.error('检查页面状态失败:', error);
-  }
-}
-
-/**
- * 绑定事件
- */
-function bindEvents() {
-  // 处理询盘按钮
-  document.getElementById('process-btn').addEventListener('click', async () => {
-    const btn = document.getElementById('process-btn');
-    const originalText = btn.textContent;
-    btn.textContent = '处理中...';
-    btn.disabled = true;
-
-    try {
-      // 获取当前标签页
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const currentTab = tabs[0];
-
-      if (!currentTab?.url?.includes('message.alibaba.com')) {
-        showMessage('请在询盘页面使用此功能', 'error');
-        btn.textContent = originalText;
-        btn.disabled = false;
-        return;
-      }
-
-      // 发送消息给 content script
-      const response = await chrome.tabs.sendMessage(currentTab.id, {
-        action: 'processInquiry',
-        data: {
-          url: currentTab.url,
-          timestamp: new Date().toISOString()
+    if (tab.url.includes('message.alibaba.com')) {
+      // 发送消息给 Content Script
+      chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_TYPE' }, (response) => {
+        if (response?.pageType === 'list') {
+          currentPageType = 'list';
+          pageStatus.textContent = '询盘列表页';
+          startBtn.disabled = false;
+        } else if (response?.pageType === 'detail') {
+          currentPageType = 'detail';
+          pageStatus.textContent = '询盘详情页';
+          startBtn.disabled = true;
+          startBtn.textContent = '已在详情页';
+        } else {
+          pageStatus.textContent = '请在询盘页面使用';
+          startBtn.disabled = true;
         }
       });
-
-      if (response && response.success) {
-        showMessage('✅ 回复已生成并填充到输入框', 'success');
-      } else {
-        showMessage('❌ 生成失败，请稍后重试', 'error');
-      }
-    } catch (error) {
-      console.error('处理询盘失败:', error);
-      showMessage('❌ 处理失败，请刷新页面后重试', 'error');
-    } finally {
-      btn.textContent = originalText;
-      btn.disabled = false;
+    } else {
+      pageStatus.textContent = '请在询盘页面使用';
+      startBtn.disabled = true;
     }
-  });
+  } catch (error) {
+    console.error('检测页面失败:', error);
+    pageStatus.textContent = '检测失败';
+    startBtn.disabled = true;
+  }
+}
 
-  // 设置按钮
-  document.getElementById('settings-btn').addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
-  });
+/**
+ * 监听消息
+ */
+function setupMessageListener() {
+  chrome.runtime.onMessage.addListener((request) => {
+    switch (request.type) {
+      case 'STATUS_UPDATE':
+        updateStatus(request.status, request.details);
+        break;
 
-  // 选项链接
-  document.getElementById('options-link').addEventListener('click', (e) => {
-    e.preventDefault();
-    chrome.runtime.openOptionsPage();
+      case 'PROCESS_COMPLETE':
+        showComplete();
+        break;
+
+      case 'ERROR':
+        showError(request.message);
+        break;
+    }
   });
 }
 
 /**
- * 显示消息
+ * 更新状态
  */
-function showMessage(text, type = 'info') {
-  const messagePanel = document.getElementById('message-panel');
-  messagePanel.textContent = text;
-  messagePanel.className = `message ${type}`;
+function updateStatus(status, details) {
+  const stepIndex = PROCESS_STEPS.findIndex(s => s.id === status);
 
-  // 5 秒后恢复默认消息
-  setTimeout(() => {
-    messagePanel.textContent = '💡 提示：在询盘列表页面点击"开始处理询盘"按钮，AI 将自动生成专业回复。';
-    messagePanel.className = 'message info';
-  }, 5000);
+  // 更新进度条
+  if (stepIndex >= 0) {
+    const progress = ((stepIndex + 1) / PROCESS_STEPS.length) * 100;
+    progressFill.style.width = `${progress}%`;
+    progressArea.style.display = 'block';
+
+    // 更新步骤显示
+    progressSteps.innerHTML = PROCESS_STEPS.map((step, i) =>
+      `<span style="color: ${i <= stepIndex ? '#FF6600' : '#ccc'}">${step.label}</span>`
+    ).join('');
+  }
+
+  // 更新状态文本
+  statusText.textContent = details?.message || status;
+  statusText.className = 'status-text status-processing';
+
+  // 更新图标
+  statusIcon.textContent = '⏳';
 }
+
+/**
+ * 显示完成
+ */
+function showComplete() {
+  statusIcon.textContent = '✅';
+  statusText.textContent = '处理完成！请检查回复后手动发送';
+  statusText.className = 'status-text status-complete';
+  progressFill.style.width = '100%';
+}
+
+/**
+ * 显示错误
+ */
+function showError(message) {
+  statusIcon.textContent = '❌';
+  statusText.textContent = message;
+  statusText.className = 'status-text status-error';
+}
+
+// 开始按钮点击事件
+startBtn.addEventListener('click', async () => {
+  startBtn.disabled = true;
+  startBtn.textContent = '处理中...';
+
+  // 发送开始消息给 Service Worker
+  chrome.runtime.sendMessage({ type: 'START_PROCESS' });
+});
+
+// 初始化
+init();
