@@ -21,3 +21,6 @@ cookies/*.json
 
 # Playwright MCP
 .playwright-mcp/
+
+# Worktrees
+.worktrees/
