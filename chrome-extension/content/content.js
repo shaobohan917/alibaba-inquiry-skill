@@ -1,165 +1,196 @@
-// 阿里巴巴询盘助手 - Content Script
-// 页面内容脚本，负责与询盘页面交互
+/**
+ * Content Script - 阿里巴巴询盘页面 DOM 操作
+ * 负责：页面检测、数据提取、回复填充
+ */
 
-console.log('阿里巴巴询盘助手 Content Script 已加载');
+import { SELECTORS } from '../config/default-config.js';
 
-// 等待 DOM 加载完成
+// 页面类型检测结果
+let currentPageType = null;
+
+/**
+ * 检测页面类型
+ */
+function detectPageType() {
+  const url = window.location.href;
+
+  if (url.includes('#feedback/all') || url.includes('default.htm')) {
+    return 'list';
+  }
+
+  if (url.includes('maDetail.htm') || url.includes('conversation')) {
+    return 'detail';
+  }
+
+  return 'unknown';
+}
+
+/**
+ * 获取询盘列表
+ */
+function getInquiryList() {
+  const items = document.querySelectorAll(SELECTORS.inquiryItem);
+
+  return Array.from(items).map((item, index) => ({
+    index,
+    sender: item.querySelector('.buyer-name, .contact-name')?.textContent?.trim() || 'Unknown',
+    subject: item.querySelector('.subject, .title')?.textContent?.trim() || 'No Subject',
+    time: item.querySelector('.time, .date')?.textContent?.trim() || '',
+    preview: item.querySelector('.preview, .summary')?.textContent?.trim() || '',
+    unread: item.classList.contains('unread')
+  }));
+}
+
+/**
+ * 点击第一个询盘
+ */
+function clickFirstInquiry() {
+  const firstItem = document.querySelector(SELECTORS.inquiryItem);
+
+  if (firstItem) {
+    firstItem.click();
+    return true;
+  }
+
+  console.warn('未找到询盘列表项');
+  return false;
+}
+
+/**
+ * 获取聊天历史记录
+ */
+function getChatHistory() {
+  const messages = document.querySelectorAll(SELECTORS.chatMessage);
+
+  return Array.from(messages).map(msg => {
+    const isBuyer = msg.classList.contains('buyer-chat-msg') ||
+                    msg.classList.contains('buyer') ||
+                    msg.querySelector('.buyer-chat-msg') !== null;
+
+    return {
+      sender: isBuyer ? 'buyer' : 'seller',
+      content: msg.textContent?.trim() || '',
+      time: msg.querySelector('.time, .timestamp')?.textContent?.trim() || ''
+    };
+  });
+}
+
+/**
+ * 填充回复到输入框
+ */
+function fillReply(content) {
+  try {
+    // 先点击输入框激活编辑器
+    const inputBox = document.querySelector(SELECTORS.inputBox);
+    if (inputBox) {
+      inputBox.click();
+    }
+
+    // 使用 TinyMCE API 填充内容
+    if (window.tinymce) {
+      const editor = window.tinymce.get(SELECTORS.editorId);
+      if (editor) {
+        editor.setContent(content);
+        editor.fire('change');
+        editor.fire('input');
+
+        // 同时更新底层 textarea
+        const textarea = document.getElementById(SELECTORS.editorId);
+        if (textarea) {
+          textarea.value = content;
+          textarea.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        console.log('回复已填充到 TinyMCE 编辑器');
+        return true;
+      }
+    }
+
+    // 备用方案：直接填充 textarea
+    const fallbackInput = document.querySelector(SELECTORS.fallbackInput);
+    if (fallbackInput) {
+      fallbackInput.value = content;
+      fallbackInput.dispatchEvent(new Event('input', { bubbles: true }));
+      console.log('回复已填充到备用输入框');
+      return true;
+    }
+
+    console.warn('未找到输入框');
+    return false;
+  } catch (error) {
+    console.error('填充回复失败:', error.message);
+    return false;
+  }
+}
+
+/**
+ * 向 Service Worker 发送消息
+ */
+function sendMessage(type, data) {
+  chrome.runtime.sendMessage({ type, ...data });
+}
+
+// 页面加载完成后检测页面类型
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM 加载完成，初始化询盘助手');
-  initInquiryAssistant();
+  currentPageType = detectPageType();
+
+  // 告知 Service Worker
+  sendMessage('PAGE_DETECTED', {
+    pageType: currentPageType,
+    url: window.location.href
+  });
+
+  console.log('Content Script 已加载，页面类型:', currentPageType);
 });
 
-// 如果 DOM 已经加载完成，直接初始化
-if (document.readyState !== 'loading') {
-  initInquiryAssistant();
-}
+// 监听来自 Service Worker 的消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('收到消息:', request);
 
-/**
- * 初始化询盘助手
- */
-function initInquiryAssistant() {
-  // 检测是否在询盘页面
-  if (isInquiryPage()) {
-    console.log('检测到询盘页面');
-    injectAssistantButton();
+  switch (request.type) {
+    case 'GET_PAGE_TYPE':
+      sendResponse({ pageType: currentPageType });
+      break;
+
+    case 'GET_INQUIRY_LIST':
+      try {
+        const list = getInquiryList();
+        sendResponse({ success: true, list });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+      break;
+
+    case 'CLICK_FIRST_INQUIRY':
+      try {
+        const success = clickFirstInquiry();
+        sendResponse({ success });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+      break;
+
+    case 'GET_CHAT_HISTORY':
+      try {
+        const history = getChatHistory();
+        sendResponse({ success: true, history });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+      break;
+
+    case 'FILL_REPLY':
+      try {
+        const success = fillReply(request.content);
+        sendResponse({ success });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+      break;
+
+    default:
+      sendResponse({ error: 'Unknown message type' });
   }
-}
 
-/**
- * 判断是否在询盘页面
- */
-function isInquiryPage() {
-  return window.location.hostname.includes('message.alibaba.com');
-}
-
-/**
- * 注入助手按钮
- */
-function injectAssistantButton() {
-  const button = document.createElement('button');
-  button.id = 'alibaba-assistant-btn';
-  button.textContent = '🤖 AI 生成回复';
-  button.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    padding: 12px 24px;
-    background: #FF6600;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-    box-shadow: 0 2px 8px rgba(255, 102, 0, 0.3);
-    transition: all 0.3s ease;
-  `;
-
-  button.addEventListener('mouseenter', () => {
-    button.style.background = '#FF8533';
-    button.style.transform = 'translateY(-2px)';
-  });
-
-  button.addEventListener('mouseleave', () => {
-    button.style.background = '#FF6600';
-    button.style.transform = 'translateY(0)';
-  });
-
-  button.addEventListener('click', () => {
-    handleButtonClick();
-  });
-
-  document.body.appendChild(button);
-  console.log('助手按钮已注入');
-}
-
-/**
- * 处理按钮点击
- */
-function handleButtonClick() {
-  console.log('用户点击了 AI 生成回复按钮');
-
-  // 发送消息给 Service Worker
-  chrome.runtime.sendMessage({
-    action: 'processInquiry',
-    data: {
-      url: window.location.href,
-      timestamp: new Date().toISOString()
-    }
-  }, (response) => {
-    if (response && response.success) {
-      console.log('处理成功:', response);
-      fillReply(response.reply);
-    } else {
-      console.error('处理失败:', response);
-      alert('生成回复失败，请稍后重试');
-    }
-  });
-}
-
-/**
- * 填充回复内容到输入框
- */
-function fillReply(replyText) {
-  // 尝试找到输入框并填充内容
-  const textarea = document.querySelector('textarea[placeholder*="message"], textarea[class*="input"], .message-input textarea');
-
-  if (textarea) {
-    textarea.value = replyText;
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    console.log('回复内容已填充到输入框');
-
-    // 显示成功提示
-    showToast('✅ AI 回复已生成，请检查后发送');
-  } else {
-    console.log('未找到输入框，尝试其他方式...');
-    showToast('⚠️ 未找到输入框，请手动粘贴回复内容');
-
-    // 复制回复内容到剪贴板
-    navigator.clipboard.writeText(replyText).then(() => {
-      console.log('回复内容已复制到剪贴板');
-    });
-  }
-}
-
-/**
- * 显示提示消息
- */
-function showToast(message) {
-  const toast = document.createElement('div');
-  toast.textContent = message;
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10000;
-    padding: 12px 24px;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    border-radius: 8px;
-    font-size: 14px;
-    animation: fadeInOut 3s ease-in-out;
-  `;
-
-  // 添加动画样式
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes fadeInOut {
-      0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
-      15% { opacity: 1; transform: translateX(-50%) translateY(0); }
-      85% { opacity: 1; transform: translateX(-50%) translateY(0); }
-      100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-    }
-  `;
-  document.head.appendChild(style);
-
-  document.body.appendChild(toast);
-
-  // 3 秒后移除提示
-  setTimeout(() => {
-    toast.remove();
-    style.remove();
-  }, 3000);
-}
+  return true; // 保持消息通道开放用于异步响应
+});
