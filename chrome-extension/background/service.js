@@ -63,6 +63,20 @@ function waitForDetailPage(tabId) {
 }
 
 /**
+ * 发送桌面通知
+ */
+function sendNotification(title, message, iconUrl = '/icons/icon-48.png') {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl,
+    title,
+    message,
+    priority: 100,
+    requireInteraction: false
+  });
+}
+
+/**
  * 处理询盘流程
  */
 async function processInquiry(tabId) {
@@ -130,6 +144,9 @@ async function processInquiry(tabId) {
 
     chrome.runtime.sendMessage({ type: 'PROCESS_COMPLETE' });
 
+    // 发送桌面通知
+    sendNotification('✅ 询盘处理完成', 'AI 回复已生成，请检查并发送');
+
   } catch (error) {
     console.error('处理询盘失败:', error);
     updateStatus('error', { message: error.message });
@@ -137,6 +154,9 @@ async function processInquiry(tabId) {
       type: 'ERROR',
       message: error.message
     });
+
+    // 发送错误通知
+    sendNotification('❌ 询盘处理失败', error.message, '/icons/icon-48.png');
   }
 }
 
