@@ -1,0 +1,9 @@
+{
+  "name": "alibaba-7-agents-web",
+  "version": "1.0.0",
+  "description": "阿里国际站 7 岗位 AI 智能体可视化执行系统",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "open": "open http://localhost:8080"
+  }
+}
