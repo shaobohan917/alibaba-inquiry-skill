@@ -69,9 +69,14 @@ function clickFirstInquiry() {
     // 获取询盘详情页链接
     const link = firstItem.querySelector('a[href*="maDetail.htm"], a[href*="conversation"]') ||
                  firstItem.getAttribute('href');
-    const detailUrl = link?.href || link;
+    let detailUrl = link?.href || link;
 
     if (detailUrl) {
+      // 如果是相对路径，转换为完整 URL
+      if (detailUrl.startsWith('/')) {
+        detailUrl = 'https://message.alibaba.com' + detailUrl;
+      }
+
       // 告诉 Service Worker 打开新标签页
       chrome.runtime.sendMessage({
         type: 'OPEN_DETAIL_TAB',
