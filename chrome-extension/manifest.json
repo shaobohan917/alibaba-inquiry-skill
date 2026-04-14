@@ -7,9 +7,7 @@
     "tabs",
     "activeTab",
     "scripting",
-    "storage",
-    "cookies",
-    "notifications"
+    "storage"
   ],
   "host_permissions": [
     "*://message.alibaba.com/*"

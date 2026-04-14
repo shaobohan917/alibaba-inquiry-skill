@@ -45,12 +45,23 @@ async function detectCurrentPage() {
 
     // 检查是否在阿里巴巴询盘页面
     const isInquiryPage = tab.url && (
-      tab.url.includes('message.alibaba.com') ||
-      tab.url.includes('message.aliyun.com') ||
-      tab.url.includes('feedback/all')
+      tab.url.includes('message.alibaba.com')
     );
 
     if (isInquiryPage) {
+      // 先执行 Content Script（如果未注入）
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content/content.js']
+        });
+      } catch (e) {
+        // Content Script 可能已注入，忽略错误
+      }
+
+      // 等待一小段时间让 Content Script 初始化
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // 尝试发送消息给 Content Script
       try {
         const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_TYPE' });
@@ -64,25 +75,24 @@ async function detectCurrentPage() {
           currentPageType = 'detail';
           pageStatus.textContent = '询盘详情页';
           startBtn.disabled = true;
-          startBtn.textContent = '已在详情页';
+          startBtn.textContent = '请在列表页使用';
         } else {
           pageStatus.textContent = '页面类型未知';
           startBtn.disabled = true;
         }
       } catch (msgError) {
         console.warn('Content Script 消息发送失败:', msgError);
-        // Content Script 可能未加载，尝试通过 URL 判断
+        // 尝试通过 URL 判断
         if (tab.url.includes('feedback/all') || tab.url.includes('default.htm')) {
           pageStatus.textContent = '询盘列表页 (请刷新页面)';
           startBtn.disabled = false;
-          startBtn.textContent = '刷新页面后点击';
         } else {
-          pageStatus.textContent = 'Content Script 未加载，请刷新页面';
+          pageStatus.textContent = 'Content Script 未响应，请刷新页面';
           startBtn.disabled = true;
         }
       }
     } else {
-      pageStatus.textContent = '请在询盘页面使用';
+      pageStatus.textContent = '请在 message.alibaba.com 使用';
       startBtn.disabled = true;
     }
   } catch (error) {
