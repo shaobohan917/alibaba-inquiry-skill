@@ -28,10 +28,14 @@ let currentPageType = null;
 function detectPageType() {
   const url = window.location.href;
 
-  if (url.includes('#feedback/all') || url.includes('default.htm')) {
+  // 列表页：feedback/all 或 message.alibaba.com 根路径
+  if (url.includes('feedback/all') ||
+      url.includes('default.htm') ||
+      (url.includes('message.alibaba.com') && !url.includes('maDetail.htm') && !url.includes('conversation'))) {
     return 'list';
   }
 
+  // 详情页：maDetail.htm 或 conversation
   if (url.includes('maDetail.htm') || url.includes('conversation')) {
     return 'detail';
   }
@@ -145,7 +149,7 @@ function sendMessage(type, data) {
 }
 
 // 页面加载完成后检测页面类型
-document.addEventListener('DOMContentLoaded', () => {
+function initContentScript() {
   currentPageType = detectPageType();
 
   // 告知 Service Worker
@@ -154,8 +158,16 @@ document.addEventListener('DOMContentLoaded', () => {
     url: window.location.href
   });
 
-  console.log('Content Script 已加载，页面类型:', currentPageType);
-});
+  console.log('Content Script 已加载，页面类型:', currentPageType, 'URL:', window.location.href);
+}
+
+// 如果是页面加载时注入，等待 DOMContentLoaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initContentScript);
+} else {
+  // 如果是后来注入的，立即执行
+  initContentScript();
+}
 
 // 监听来自 Service Worker 的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
