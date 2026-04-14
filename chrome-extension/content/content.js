@@ -66,13 +66,28 @@ function clickFirstInquiry() {
   const firstItem = document.querySelector(SELECTORS.inquiryItem);
 
   if (firstItem) {
-    // 直接触发 click，让浏览器正常行为（新标签页打开）
-    firstItem.click();
-    return true;
+    // 获取询盘详情页链接
+    const link = firstItem.querySelector('a[href*="maDetail.htm"], a[href*="conversation"]') ||
+                 firstItem.getAttribute('href');
+    const detailUrl = link?.href || link;
+
+    if (detailUrl) {
+      // 告诉 Service Worker 打开新标签页
+      chrome.runtime.sendMessage({
+        type: 'OPEN_DETAIL_TAB',
+        url: detailUrl
+      });
+
+      // 阻止默认行为（防止打开第二个标签页）
+      return { success: true, url: detailUrl };
+    }
+
+    console.warn('未找到详情链接');
+    return { success: false, error: '未找到详情链接' };
   }
 
   console.warn('未找到询盘列表项');
-  return false;
+  return { success: false, error: '未找到询盘列表项' };
 }
 
 /**

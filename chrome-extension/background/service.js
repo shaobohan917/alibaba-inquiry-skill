@@ -48,11 +48,16 @@ async function sendMessageToTab(tabId, message) {
 /**
  * 等待新标签页打开（详情页）
  */
-function waitForNewDetailTab(sourceTabId) {
+function waitForNewDetailTab() {
   return new Promise((resolve) => {
+    let resolved = false;
+
     const listener = (tab) => {
+      if (resolved) return;
+
       // 检查是否是新打开的详情页标签页
       if (tab.url?.includes('maDetail.htm') || tab.url?.includes('conversation')) {
+        resolved = true;
         // 移除监听器
         chrome.tabs.onCreated.removeListener(listener);
         resolve(tab.id);
@@ -64,8 +69,10 @@ function waitForNewDetailTab(sourceTabId) {
 
     // 5 秒超时
     setTimeout(() => {
-      chrome.tabs.onCreated.removeListener(listener);
-      resolve(null);
+      if (!resolved) {
+        chrome.tabs.onCreated.removeListener(listener);
+        resolve(null);
+      }
     }, 5000);
   });
 }
@@ -116,19 +123,19 @@ async function processInquiry(sourceTabId) {
       throw new Error('请在询盘列表页面使用此功能');
     }
 
-    // Step 2: 点击第一个询盘（会在新标签页打开详情）
-    updateStatus('clicking', { message: '点击第一个询盘...' });
+    // Step 2: 获取第一个询盘链接并打开新标签页
+    updateStatus('clicking', { message: '打开询盘详情...' });
 
-    const clickResult = await sendMessageToTab(sourceTabId, { type: 'CLICK_FIRST_INQUIRY' });
+    // 等待新标签页打开（监听器已在上面注册）
+    const newTabIdPromise = waitForNewDetailTab();
 
-    if (!clickResult.success) {
-      throw new Error('点击询盘失败');
-    }
+    // 发送点击请求（会触发 OPEN_DETAIL_TAB 消息）
+    await sendMessageToTab(sourceTabId, { type: 'CLICK_FIRST_INQUIRY' });
 
-    // Step 3: 等待新标签页打开
+    // 等待新标签页打开
     updateStatus('waiting', { message: '等待详情页打开...' });
 
-    const newTabId = await waitForNewDetailTab(sourceTabId);
+    const newTabId = await newTabIdPromise;
 
     if (!newTabId) {
       throw new Error('等待详情页打开超时');
@@ -210,6 +217,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
       return true; // 保持消息通道开放
 
+    case 'OPEN_DETAIL_TAB':
+      // Content Script 请求打开详情页
+      chrome.tabs.create({ url: request.url, active: true }, (newTab) => {
+        console.log('已打开详情页标签页:', newTab.id);
+      });
+      sendResponse({ success: true });
+      return true;
+
     case 'GET_STATUS':
       sendResponse({ status: currentStatus, tabId: currentTabId });
       return true;
@@ -221,13 +236,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     default:
       sendResponse({ error: 'Unknown message type' });
-  }
-});
-
-// 监听标签页创建（用于检测新详情页打开）
-chrome.tabs.onCreated.addListener((tab) => {
-  if (tab.url?.includes('maDetail.htm') || tab.url?.includes('conversation')) {
-    console.log('检测到新详情页标签页打开:', tab.id);
   }
 });
 
