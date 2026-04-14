@@ -15,8 +15,7 @@
     "*://message.alibaba.com/*"
   ],
   "background": {
-    "service_worker": "background/service.js",
-    "type": "module"
+    "service_worker": "background/service.js"
   },
   "content_scripts": [
     {
@@ -38,5 +37,6 @@
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
-  }
+  },
+  "options_page": "options/options.html"
 }
