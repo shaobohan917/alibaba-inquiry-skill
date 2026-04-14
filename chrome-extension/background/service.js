@@ -122,12 +122,32 @@ async function processInquiry(sourceTabId) {
     await waitForDetailPageLoaded(newTabId);
     console.log('[processInquiry] 详情页已加载完成');
 
+    // 等待 Content Script 注入和初始化
+    console.log('[processInquiry] 等待 Content Script 准备...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     // Step 4: 读取聊天记录
     console.log('[processInquiry] Step 4: 读取聊天记录');
     updateStatus('reading', { message: '读取聊天记录...' });
 
+    // 先注入 Content Script（如果未注入）
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: newTabId },
+        files: ['content/content.js']
+      });
+      // 等待 Content Script 初始化
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (e) {
+      console.log('[processInquiry] Content Script 可能已注入:', e.message);
+    }
+
     const chatResult = await sendMessageToTab(newTabId, { type: 'GET_CHAT_HISTORY' });
     console.log('[processInquiry] 聊天记录结果:', chatResult);
+
+    if (!chatResult) {
+      throw new Error('Content Script 未响应');
+    }
 
     if (!chatResult.success || !chatResult.history || chatResult.history.length === 0) {
       throw new Error('未找到聊天记录');
