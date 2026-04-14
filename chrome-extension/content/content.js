@@ -66,24 +66,8 @@ function clickFirstInquiry() {
   const firstItem = document.querySelector(SELECTORS.inquiryItem);
 
   if (firstItem) {
-    // 使用 MouseEvent 阻止默认行为，在当前标签页打开
-    const clickEvent = new MouseEvent('click', {
-      bubbles: true,
-      cancelable: true,
-      view: window
-    });
-
-    firstItem.dispatchEvent(clickEvent);
-
-    // 如果还是新标签页打开，尝试直接修改 location
-    setTimeout(() => {
-      const detailUrl = firstItem.getAttribute('href') || firstItem.querySelector('a')?.getAttribute('href');
-      if (detailUrl && !window.location.href.includes('maDetail.htm') && !window.location.href.includes('conversation')) {
-        // 没有成功跳转，手动跳转
-        window.location.href = detailUrl;
-      }
-    }, 500);
-
+    // 直接触发 click，让浏览器正常行为（新标签页打开）
+    firstItem.click();
     return true;
   }
 
