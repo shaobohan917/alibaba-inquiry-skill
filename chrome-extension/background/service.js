@@ -8,7 +8,8 @@ import { aiReplier } from '../lib/ai-replier.js';
 // 当前处理状态
 let currentStatus = 'idle';
 let currentTabId = null;
-let sourceTabId = null; // 来源标签页 ID（列表页）
+let pendingDetailTabId = null; // 等待加载的详情页标签页 ID
+let pendingDetailTabPromise = null; // 等待详情页标签页的 Promise
 
 // 更新状态并持久化
 function updateStatus(status, details = {}) {
@@ -42,38 +43,6 @@ async function sendMessageToTab(tabId, message) {
     chrome.tabs.sendMessage(tabId, message, (response) => {
       resolve(response);
     });
-  });
-}
-
-/**
- * 等待新标签页打开（详情页）
- */
-function waitForNewDetailTab() {
-  return new Promise((resolve) => {
-    let resolved = false;
-
-    const listener = (tab) => {
-      if (resolved) return;
-
-      // 检查是否是新打开的详情页标签页
-      if (tab.url?.includes('maDetail.htm') || tab.url?.includes('conversation')) {
-        resolved = true;
-        // 移除监听器
-        chrome.tabs.onCreated.removeListener(listener);
-        resolve(tab.id);
-      }
-    };
-
-    // 监听新标签页打开
-    chrome.tabs.onCreated.addListener(listener);
-
-    // 5 秒超时
-    setTimeout(() => {
-      if (!resolved) {
-        chrome.tabs.onCreated.removeListener(listener);
-        resolve(null);
-      }
-    }, 5000);
   });
 }
 
@@ -113,29 +82,34 @@ function sendNotification(title, message, iconUrl = '/icons/icon-48.png') {
  * 处理询盘流程
  */
 async function processInquiry(sourceTabId) {
+  console.log('[processInquiry] 开始处理，sourceTabId:', sourceTabId);
+
   try {
     // Step 1: 检测页面类型
+    console.log('[processInquiry] Step 1: 检测页面类型');
     updateStatus('detecting', { message: '检测页面类型...' });
 
     const pageType = await sendMessageToTab(sourceTabId, { type: 'GET_PAGE_TYPE' });
+    console.log('[processInquiry] 页面类型:', pageType);
 
     if (pageType?.pageType !== 'list') {
       throw new Error('请在询盘列表页面使用此功能');
     }
 
     // Step 2: 获取第一个询盘链接并打开新标签页
+    console.log('[processInquiry] Step 2: 打开询盘详情');
     updateStatus('clicking', { message: '打开询盘详情...' });
-
-    // 等待新标签页打开（监听器已在上面注册）
-    const newTabIdPromise = waitForNewDetailTab();
 
     // 发送点击请求（会触发 OPEN_DETAIL_TAB 消息）
     await sendMessageToTab(sourceTabId, { type: 'CLICK_FIRST_INQUIRY' });
+    console.log('[processInquiry] 已发送 CLICK_FIRST_INQUIRY');
 
     // 等待新标签页打开
     updateStatus('waiting', { message: '等待详情页打开...' });
 
-    const newTabId = await newTabIdPromise;
+    // 等待详情页标签页创建完成
+    const newTabId = await pendingDetailTabPromise;
+    console.log('[processInquiry] 新标签页 ID:', newTabId);
 
     if (!newTabId) {
       throw new Error('等待详情页打开超时');
@@ -144,12 +118,16 @@ async function processInquiry(sourceTabId) {
     currentTabId = newTabId;
 
     // 等待详情页加载完成
+    console.log('[processInquiry] 等待详情页加载完成...');
     await waitForDetailPageLoaded(newTabId);
+    console.log('[processInquiry] 详情页已加载完成');
 
     // Step 4: 读取聊天记录
+    console.log('[processInquiry] Step 4: 读取聊天记录');
     updateStatus('reading', { message: '读取聊天记录...' });
 
     const chatResult = await sendMessageToTab(newTabId, { type: 'GET_CHAT_HISTORY' });
+    console.log('[processInquiry] 聊天记录结果:', chatResult);
 
     if (!chatResult.success || !chatResult.history || chatResult.history.length === 0) {
       throw new Error('未找到聊天记录');
@@ -160,23 +138,28 @@ async function processInquiry(sourceTabId) {
     });
 
     // Step 5: 生成 AI 回复
+    console.log('[processInquiry] Step 5: 生成 AI 回复');
     updateStatus('generating', { message: 'AI 正在生成回复...' });
 
     const reply = await aiReplier.generateReply(chatResult.history);
+    console.log('[processInquiry] AI 回复:', reply);
 
     // Step 6: 填充回复
+    console.log('[processInquiry] Step 6: 填充回复');
     updateStatus('filling', { message: '填充回复到输入框...' });
 
     const fillResult = await sendMessageToTab(newTabId, {
       type: 'FILL_REPLY',
       content: reply
     });
+    console.log('[processInquiry] 填充结果:', fillResult);
 
     if (!fillResult.success) {
       throw new Error('填充回复失败');
     }
 
     // 完成
+    console.log('[processInquiry] 完成');
     updateStatus('complete', {
       message: '处理完成！请检查回复内容后手动发送',
       reply
@@ -188,7 +171,7 @@ async function processInquiry(sourceTabId) {
     sendNotification('✅ 询盘处理完成', 'AI 回复已生成，请检查并发送');
 
   } catch (error) {
-    console.error('处理询盘失败:', error);
+    console.error('[processInquiry] 失败:', error);
     updateStatus('error', { message: error.message });
     chrome.runtime.sendMessage({
       type: 'ERROR',
@@ -219,8 +202,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     case 'OPEN_DETAIL_TAB':
       // Content Script 请求打开详情页
-      chrome.tabs.create({ url: request.url, active: true }, (newTab) => {
-        console.log('已打开详情页标签页:', newTab.id);
+      // 创建 Promise 并保存，供 processInquiry 等待
+      pendingDetailTabPromise = new Promise((resolve) => {
+        chrome.tabs.create({ url: request.url, active: true }, (newTab) => {
+          console.log('[OPEN_DETAIL_TAB] 已打开详情页标签页:', newTab.id, newTab.url);
+          pendingDetailTabId = newTab.id;
+          resolve(newTab.id);
+        });
       });
       sendResponse({ success: true });
       return true;
