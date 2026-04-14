@@ -27,11 +27,36 @@ const progressSteps = document.getElementById('progress-steps');
  * 初始化
  */
 async function init() {
+  // 先从 Service Worker 恢复状态
+  await restoreState();
+
   // 检测当前页面
   await detectCurrentPage();
 
   // 监听 Service Worker 消息
   setupMessageListener();
+}
+
+/**
+ * 从 Service Worker 恢复状态
+ */
+async function restoreState() {
+  try {
+    const state = await chrome.runtime.sendMessage({ type: 'GET_CURRENT_STATE' });
+
+    if (state?.status && state.status !== 'idle') {
+      console.log('恢复之前的状态:', state);
+
+      // 恢复进度条显示
+      if (state.status !== 'complete' && state.status !== 'error') {
+        updateStatus(state.status, { message: '恢复处理状态...' });
+        startBtn.disabled = true;
+        startBtn.textContent = '处理中...';
+      }
+    }
+  } catch (e) {
+    console.log('无之前状态，从头开始');
+  }
 }
 
 /**
@@ -60,7 +85,7 @@ async function detectCurrentPage() {
       }
 
       // 等待一小段时间让 Content Script 初始化
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // 尝试发送消息给 Content Script
       try {
@@ -82,14 +107,8 @@ async function detectCurrentPage() {
         }
       } catch (msgError) {
         console.warn('Content Script 消息发送失败:', msgError);
-        // 尝试通过 URL 判断
-        if (tab.url.includes('feedback/all') || tab.url.includes('default.htm')) {
-          pageStatus.textContent = '询盘列表页 (请刷新页面)';
-          startBtn.disabled = false;
-        } else {
-          pageStatus.textContent = 'Content Script 未响应，请刷新页面';
-          startBtn.disabled = true;
-        }
+        pageStatus.textContent = 'Content Script 未响应，请刷新页面';
+        startBtn.disabled = true;
       }
     } else {
       pageStatus.textContent = '请在 message.alibaba.com 使用';

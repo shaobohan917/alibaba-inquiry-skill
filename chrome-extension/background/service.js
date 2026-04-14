@@ -9,7 +9,7 @@ import { aiReplier } from '../lib/ai-replier.js';
 let currentStatus = 'idle';
 let currentTabId = null;
 
-// 更新状态
+// 更新状态并持久化
 function updateStatus(status, details = {}) {
   currentStatus = status;
 
@@ -21,6 +21,16 @@ function updateStatus(status, details = {}) {
   }).catch(() => {
     // Popup 可能未打开，忽略错误
   });
+}
+
+/**
+ * 获取当前状态（用于 Popup 恢复）
+ */
+function getCurrentState() {
+  return {
+    status: currentStatus,
+    tabId: currentTabId
+  };
 }
 
 /**
@@ -149,6 +159,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     case 'GET_STATUS':
       sendResponse({ status: currentStatus, tabId: currentTabId });
+      return true;
+
+    case 'GET_CURRENT_STATE':
+      // 返回当前状态用于 Popup 恢复
+      sendResponse(getCurrentState());
       return true;
 
     default:
