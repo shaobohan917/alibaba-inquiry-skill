@@ -1,0 +1,27 @@
+{
+  "name": "alibaba-operation",
+  "version": "1.0.0",
+  "description": "阿里国际站运营 Agent - 数据采集、6 大指标监控、推广优化",
+  "author": "Your Name",
+  "repository": "https://github.com/yourusername/alibaba-inquiry-skill",
+  "commands": [
+    {
+      "name": "alibaba-operation",
+      "description": "运营 Agent - 数据采集和推广优化",
+      "usage": "/alibaba-operation [命令]",
+      "examples": [
+        "/alibaba-operation 开始数据采集",
+        "/alibaba-operation 查看指标",
+        "/alibaba-operation 分析关键词"
+      ]
+    }
+  ],
+  "config": {
+    "required_env": [
+      "LLM_BASE_URL",
+      "LLM_API_KEY",
+      "LLM_MODEL",
+      "ALIBABA_AD_URL"
+    ]
+  }
+}

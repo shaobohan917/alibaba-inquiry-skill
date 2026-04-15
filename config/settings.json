@@ -24,5 +24,40 @@
     "chatHistory": ".chat-history, .message-history, [data-testid='chat-history']",
     "replyInput": ".reply-input, .message-input, [data-testid='reply-input']",
     "sendButton": ".send-btn, [data-testid='send-btn']"
-  }
+  },
+  "agents": {
+    "supervisor": {
+      "enabled": true,
+      "dailyBudget": 150,
+      "subPlans": 3,
+      "metrics": ["cpc", "ctr", "inquiryRate", "exposure", "clicks", "inquiryCost"]
+    },
+    "sales": {
+      "enabled": true,
+      "autoFillReply": true,
+      "autoSend": false,
+      "followUpDays": 3
+    },
+    "operation": {
+      "enabled": false,
+      "adBudgetPerPlan": 50
+    },
+    "design": {
+      "enabled": false
+    },
+    "procurement": {
+      "enabled": false,
+      "platforms": ["1688", "taobao"]
+    },
+    "inventory": {
+      "enabled": false,
+      "lowStockThreshold": 10
+    },
+    "logistics": {
+      "enabled": false,
+      "forwarderComparison": true,
+      "trackingEnabled": true
+    }
+  },
+  "shopType": "export"
 }

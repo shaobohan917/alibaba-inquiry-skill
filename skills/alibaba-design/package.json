@@ -1,0 +1,23 @@
+{
+  "name": "alibaba-design-skill",
+  "version": "1.0.0",
+  "description": "阿里国际站美工 Agent - 主图生成、详情页优化",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ../../agents/design/index.js",
+    "test": "echo \"No tests specified\""
+  },
+  "keywords": [
+    "alibaba",
+    "design",
+    "claude-code-skill",
+    "ecommerce",
+    "image-generation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

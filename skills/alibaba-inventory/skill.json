@@ -1,0 +1,26 @@
+{
+  "name": "alibaba-inventory",
+  "version": "1.0.0",
+  "description": "阿里国际站库存 Agent - 库存监控、物流跟踪",
+  "author": "Your Name",
+  "repository": "https://github.com/yourusername/alibaba-inquiry-skill",
+  "commands": [
+    {
+      "name": "alibaba-inventory",
+      "description": "库存 Agent - 库存监控和物流跟踪",
+      "usage": "/alibaba-inventory [命令]",
+      "examples": [
+        "/alibaba-inventory 查看库存预警",
+        "/alibaba-inventory 查看物流状态",
+        "/alibaba-inventory 入库 product123 100"
+      ]
+    }
+  ],
+  "config": {
+    "required_env": [
+      "LLM_BASE_URL",
+      "LLM_API_KEY",
+      "LLM_MODEL"
+    ]
+  }
+}

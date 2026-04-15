@@ -1,0 +1,23 @@
+{
+  "name": "alibaba-supervisor-skill",
+  "version": "1.0.0",
+  "description": "阿里国际站总监管 Agent - 任务分发、进度追踪、数据汇总",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ../../agents/supervisor/index.js",
+    "test": "echo \"No tests specified\""
+  },
+  "keywords": [
+    "alibaba",
+    "supervisor",
+    "claude-code-skill",
+    "ecommerce",
+    "task-management"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "alibaba-sales",
+  "version": "1.0.0",
+  "description": "阿里国际站业务员 Agent - 询盘处理、客户 CRM、复购促进",
+  "author": "Your Name",
+  "repository": "https://github.com/yourusername/alibaba-inquiry-skill",
+  "commands": [
+    {
+      "name": "alibaba-sales",
+      "description": "业务员 Agent - 询盘自动回复和客户管理",
+      "usage": "/alibaba-sales [命令]",
+      "examples": [
+        "/alibaba-sales 开始处理询盘",
+        "/alibaba-sales 查看待跟进客户",
+        "/alibaba-sales 生成复购话术"
+      ]
+    }
+  ],
+  "config": {
+    "required_env": [
+      "LLM_BASE_URL",
+      "LLM_API_KEY",
+      "LLM_MODEL",
+      "ALIBABA_MESSAGE_URL"
+    ]
+  }
+}

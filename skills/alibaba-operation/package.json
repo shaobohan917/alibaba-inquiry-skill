@@ -1,0 +1,23 @@
+{
+  "name": "alibaba-operation-skill",
+  "version": "1.0.0",
+  "description": "阿里国际站运营 Agent - 数据采集、6 大指标监控、推广优化",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ../../agents/operation/index.js",
+    "test": "echo \"No tests specified\""
+  },
+  "keywords": [
+    "alibaba",
+    "operation",
+    "claude-code-skill",
+    "ecommerce",
+    "analytics"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

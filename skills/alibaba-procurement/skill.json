@@ -1,0 +1,26 @@
+{
+  "name": "alibaba-procurement",
+  "version": "1.0.0",
+  "description": "阿里国际站采购 Agent - 1688 选品、供应商管理",
+  "author": "Your Name",
+  "repository": "https://github.com/yourusername/alibaba-inquiry-skill",
+  "commands": [
+    {
+      "name": "alibaba-procurement",
+      "description": "采购 Agent - 1688 选品和比价",
+      "usage": "/alibaba-procurement [命令]",
+      "examples": [
+        "/alibaba-procurement 开始选品",
+        "/alibaba-procurement 比价 产品名",
+        "/alibaba-procurement 筛选新品"
+      ]
+    }
+  ],
+  "config": {
+    "required_env": [
+      "LLM_BASE_URL",
+      "LLM_API_KEY",
+      "LLM_MODEL"
+    ]
+  }
+}
