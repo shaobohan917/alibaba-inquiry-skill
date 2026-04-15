@@ -99,11 +99,46 @@ function clickFirstInquiry() {
  * 获取聊天历史记录
  */
 function getChatHistory() {
+  console.log('[Content Script] 开始获取聊天记录...');
+
   const messages = document.querySelectorAll(SELECTORS.chatMessage);
+  console.log('[Content Script] 找到消息元素数量:', messages.length, '选择器:', SELECTORS.chatMessage);
+
+  // 调试：输出找到的元素
+  messages.forEach((msg, i) => {
+    console.log(`[Content Script] 消息 ${i}:`, msg.className, msg.textContent?.slice(0, 50));
+  });
+
+  // 如果主选择器没找到，尝试备用选择器
+  if (messages.length === 0) {
+    console.log('[Content Script] 尝试备用选择器...');
+    const fallbackSelectors = [
+      '.message-item',
+      '.chat-item',
+      '.conversation-item',
+      '.msg-item',
+      '[class*="message"]',
+      '[class*="chat"]'
+    ];
+
+    for (const selector of fallbackSelectors) {
+      const found = document.querySelectorAll(selector);
+      console.log(`[Content Script] 选择器 "${selector}" 找到 ${found.length} 个元素`);
+      if (found.length > 0) {
+        console.log('[Content Script] 使用备用选择器:', selector);
+        return Array.from(found).map(msg => ({
+          sender: msg.classList.contains('buyer') || msg.classList.contains('customer') ? 'buyer' : 'seller',
+          content: msg.textContent?.trim() || '',
+          time: ''
+        }));
+      }
+    }
+  }
 
   return Array.from(messages).map(msg => {
     const isBuyer = msg.classList.contains('buyer-chat-msg') ||
                     msg.classList.contains('buyer') ||
+                    msg.classList.contains('customer') ||
                     msg.querySelector('.buyer-chat-msg') !== null;
 
     return {
@@ -118,46 +153,73 @@ function getChatHistory() {
  * 填充回复到输入框
  */
 function fillReply(content) {
-  try {
-    // 先点击输入框激活编辑器
-    const inputBox = document.querySelector(SELECTORS.inputBox);
-    if (inputBox) {
-      inputBox.click();
-    }
+  console.log('[Content Script] 开始填充回复...');
 
-    // 使用 TinyMCE API 填充内容
+  try {
+    // 方案 1: 使用 TinyMCE API（主要方案）
     if (window.tinymce) {
-      const editor = window.tinymce.get(SELECTORS.editorId);
+      const editor = window.tinymce.get('normal-im-send');
       if (editor) {
+        console.log('[Content Script] 使用 TinyMCE API 填充');
         editor.setContent(content);
         editor.fire('change');
         editor.fire('input');
 
         // 同时更新底层 textarea
-        const textarea = document.getElementById(SELECTORS.editorId);
+        const textarea = document.getElementById('normal-im-send');
         if (textarea) {
           textarea.value = content;
           textarea.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        console.log('回复已填充到 TinyMCE 编辑器');
+        console.log('[Content Script] 回复已填充到 TinyMCE 编辑器');
         return true;
       }
     }
 
-    // 备用方案：直接填充 textarea
-    const fallbackInput = document.querySelector(SELECTORS.fallbackInput);
-    if (fallbackInput) {
-      fallbackInput.value = content;
-      fallbackInput.dispatchEvent(new Event('input', { bubbles: true }));
-      console.log('回复已填充到备用输入框');
+    // 方案 2: 直接操作 iframe（备用方案）
+    const iframe = document.querySelector('#normal-im-send_ifr');
+    if (iframe) {
+      console.log('[Content Script] 尝试操作 iframe 填充');
+
+      // 先点击 .mock-reply 激活编辑器
+      const mockReply = document.querySelector('.mock-reply');
+      if (mockReply) {
+        mockReply.click();
+        console.log('[Content Script] 已点击 .mock-reply 激活编辑器');
+      }
+
+      // 等待一小段时间
+      setTimeout(() => {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+          const body = iframeDoc.querySelector('body');
+          if (body) {
+            body.innerHTML = content;
+            console.log('[Content Script] 已填充到 iframe');
+          }
+        } catch (e) {
+          console.error('[Content Script] iframe 填充失败:', e);
+        }
+      }, 500);
+
       return true;
     }
 
-    console.warn('未找到输入框');
+    // 方案 3: 直接填充隐藏 textarea（最后方案）
+    const textarea = document.getElementById('normal-im-send');
+    if (textarea) {
+      console.log('[Content Script] 使用方案 3: 直接填充 textarea');
+      textarea.value = content;
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }
+
+    console.warn('[Content Script] 未找到输入框');
     return false;
   } catch (error) {
-    console.error('填充回复失败:', error.message);
+    console.error('[Content Script] 填充回复失败:', error.message);
     return false;
   }
 }

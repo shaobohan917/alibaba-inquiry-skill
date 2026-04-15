@@ -227,6 +227,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         chrome.tabs.create({ url: request.url, active: true }, (newTab) => {
           console.log('[OPEN_DETAIL_TAB] 已打开详情页标签页:', newTab.id, newTab.url);
           pendingDetailTabId = newTab.id;
+
+          // 监听详情页加载完成，然后注入 Content Script
+          const onUpdatedListener = (tabId, changeInfo, tab) => {
+            if (tabId === newTab.id && changeInfo.status === 'complete') {
+              chrome.tabs.onUpdated.removeListener(onUpdatedListener);
+
+              // 等待一小段时间让 DOM 完全渲染
+              setTimeout(() => {
+                console.log('[OPEN_DETAIL_TAB] 详情页加载完成，注入 Content Script...');
+                chrome.scripting.executeScript({
+                  target: { tabId: newTab.id },
+                  files: ['content/content.js']
+                }).catch(e => {
+                  console.log('[OPEN_DETAIL_TAB] Content Script 可能已注入:', e.message);
+                });
+              }, 1000);
+            }
+          };
+          chrome.tabs.onUpdated.addListener(onUpdatedListener);
+
           resolve(newTab.id);
         });
       });
