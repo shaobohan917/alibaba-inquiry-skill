@@ -1,169 +1,169 @@
-# alibaba-inquiry-skill
+# 阿里智能业务员 Pro
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code Skill](https://img.shields.io/badge/Claude_Code-Skill-blue)](https://github.com/anthropics/claude-code)
+> 让外贸更简单 - 自动回复询盘 · 智能客户跟进
 
-> 阿里巴巴国际站询盘自动回复 Claude Code Skill - 自动登录、AI 生成专业回复
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://example.com)
+[![License](https://img.shields.io/badge/license-Commercial-green.svg)](https://example.com)
 
-## 在线演示
+---
 
-![Demo](demo.gif)
+## 🚀 快速启动
 
-## 快速开始
+### Windows 用户
+**双击 `start.bat`** 即可启动，浏览器会自动打开系统界面。
 
-### 方式 1：使用打包后的 Skill（推荐）
+### Mac 用户
+**双击 `start.sh`** 即可启动，浏览器会自动打开系统界面。
 
+> **首次启动说明**: 系统会自动安装依赖（约 1-2 分钟），后续启动只需 3-5 秒
+
+---
+
+## 💡 使用说明
+
+启动后访问 http://localhost:3000，您会看到简洁的操作界面：
+
+### 核心功能
+
+#### 1. 💬 自动回复询盘
+- 客户发来询盘后，系统自动分析并生成专业回复
+- 15 分钟内快速响应，提高转化率
+- 支持出口通和金品诚企两种店铺类型
+
+#### 2. ⚙️ 自动任务执行
+- 自动处理待办任务（客户跟进、数据同步、订单处理等）
+- 启动后自动轮询，发现任务立即执行
+- 实时查看任务状态和进度
+
+### 店铺类型切换
+
+点击顶部按钮切换店铺类型：
+- 📦 **出口通店铺**: 标准响应时效（15 分钟）
+- 💎 **金品诚企店铺**: 优先响应时效（10 分钟）
+
+---
+
+## 📋 系统要求
+
+- **操作系统**: Windows 10+ / macOS 11+ / Ubuntu 18.04+
+- **Node.js**: 16.0+ (启动时自动检测)
+- **网络**: 首次启动需要访问 npm 仓库
+
+---
+
+## 🔧 常用命令
+
+### 查看服务状态
 ```bash
-# 复制 Skill 到 Claude Code 目录
-cp -r build/skills/alibaba-inquiry ~/.claude/skills/
-
-# 安装依赖
-cd ~/.claude/skills/alibaba-inquiry
-npm install
-
-# 安装浏览器
-npm run install-browsers
-
-# 配置 API Key
-cp .env.example .env
-# 编辑 .env 填入你的 LLM_API_KEY
+pm2 status
 ```
 
-### 方式 2：从源码安装
-
+### 查看日志
 ```bash
-git clone https://github.com/yourusername/alibaba-inquiry-skill.git
-cd alibaba-inquiry-skill
-npm install
-npm run install-browsers
+pm2 logs
 ```
 
-## 使用方法
-
-在 Claude Code 中输入：
-
+### 停止服务
 ```bash
-/alibaba-inquiry 开始处理询盘
+pm2 stop all
 ```
 
-### 完整流程
-
-1. 自动启动 Chrome（如未运行）
-2. 自动登录阿里巴巴（Cookie 持久化）
-3. 打开询盘列表
-4. 点击第一个询盘
-5. 读取聊天记录
-6. AI 分析意图并生成回复
-7. 填充回复到输入框
-8. 人工确认发送
-
-## 功能特点
-
-- ✅ **自动登录** - Cookie 持久化，一次登录永久有效
-- ✅ **AI 话术匹配** - 基于知识库自动生成专业回复
-- ✅ **多语言支持** - 自动检测客户语言（中/英/法/西等）
-- ✅ **意图识别** - 价格/样品/付款/物流/定制/售后，自动匹配话术
-- ✅ **手动发送** - 回复填充到输入框，人工确认后发送
-
-## 配置说明
-
-### 环境变量（.env）
-
+### 重启服务
 ```bash
-# 大模型 API 配置
-LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-LLM_API_KEY=sk-your-api-key
-LLM_MODEL=qwen3.5-plus
-
-# 询盘列表页 URL
-ALIBABA_MESSAGE_URL=https://message.alibaba.com/message/default.htm?spm=a2756.trade-list-seller.0.0.79e8601aewBszG#feedback/all
+pm2 restart all
 ```
 
-### 常见大模型配置
-
-**阿里云通义千问**：
+### 监控面板
 ```bash
-LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-LLM_API_KEY=sk-...
-LLM_MODEL=qwen-plus
+pm2 monit
 ```
 
-**OpenAI**：
+---
+
+## 📁 目录结构
+
+```
+xiong/
+├── start.bat              # Windows 一键启动脚本
+├── start.sh               # Mac/Linux 一键启动脚本
+├── ecosystem.config.js    # PM2 配置文件
+├── web/
+│   ├── server.js          # Web 服务器
+│   └── index.html         # 用户界面
+├── core/
+│   ├── browser-manager.js # 浏览器管理
+│   ├── task-queue.js      # 任务队列
+│   ├── task-executor.js   # 任务执行器
+│   └── data-store.js      # 数据存储
+├── agents/
+│   ├── supervisor/        # 总运营（任务分发）
+│   ├── sales/             # 业务员（询盘处理）
+│   └── ...                # 其他 Agent
+├── data/                  # 数据存储目录
+│   ├── cookies/           # 登录 Cookie
+│   └── tasks/             # 任务数据
+└── docs/
+    ├── USER_GUIDE.md      # 详细使用指南
+    └── CHANGELOG.md       # 版本更新说明
+```
+
+---
+
+## ❓ 常见问题
+
+### Q: 启动后显示"PM2 未安装"
+**A**: 系统会自动安装 PM2，请等待安装完成。如果安装失败，可手动运行：
 ```bash
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_API_KEY=sk-...
-LLM_MODEL=gpt-4o
+npm install -g pm2
 ```
 
-**DeepSeek**：
+### Q: 浏览器没有自动打开
+**A**: 
+1. 手动访问 http://localhost:3000
+2. 检查防火墙设置，确保 3000 端口未被阻止
+
+### Q: 如何停止服务
+**A**: 运行以下命令：
 ```bash
-LLM_BASE_URL=https://api.deepseek.com/v1
-LLM_API_KEY=sk-...
-LLM_MODEL=deepseek-chat
+pm2 stop all
 ```
 
-## 构建打包
+### Q: Cookie 存储在哪里
+**A**: `data/cookies/` 目录，请妥善保管，不要分享给他人
 
-```bash
-# 运行构建脚本
-./build.sh
+### Q: 如何备份数据
+**A**: 备份整个 `data/` 目录即可
 
-# 输出位置
-build/skills/alibaba-inquiry/
-```
+---
 
-## 技术架构
+## 📞 技术支持
 
-```
-alibaba-inquiry-skill/
-├── skills/alibaba-inquiry/  # Skill 入口
-│   ├── index.js             # Skill 主文件
-│   ├── package.json         # Skill 配置
-│   └── skill.json           # Skill 元数据
-├── src/
-│   ├── browser.js           # 浏览器管理（CDP 连接、Cookie 存取）
-│   ├── ai-replier.js        # AI 回复生成（意图识别、话术匹配）
-│   └── inquiry-scraper.js   # 询盘数据提取
-├── docs/
-│   └── knowledge-base.md    # 销售话术知识库
-├── build.sh                 # 构建脚本
-└── run.js                   # 主运行脚本
-```
+如遇到问题，请查看：
+- **详细文档**: `docs/USER_GUIDE.md`
+- **版本说明**: `docs/CHANGELOG.md`
 
-## 系统要求
+---
 
-- Node.js >= 16.0.0
-- Google Chrome（CDP 模式，端口 9222）
-- 阿里巴巴国际站账号
+## 📊 版本信息
 
-## 常见问题
+**当前版本**: v1.0.0 (2026-04-14)
+**代号**: 小白用户版
 
-### Chrome 未运行
+**核心特性**:
+- ✅ 一键启动，无需命令行操作
+- ✅ 简化界面，去掉技术术语
+- ✅ 手动控制，取消开机自启
+- ✅ 安全稳定，本地存储数据
 
-Skill 会自动启动 Chrome（CDP 模式）。如果启动失败，请手动执行：
+---
 
-```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9222 \
-  --no-first-run
-```
+## ⚠️ 注意事项
 
-### Cookie 失效
+1. **账号安全**: 本系统通过浏览器自动化操作，请合理使用，避免频繁操作触发风控
+2. **数据备份**: 定期备份 `data/` 目录
+3. **网络环境**: 首次启动需要稳定的网络连接
+4. **隐私保护**: 不要在公共电脑上使用本系统
 
-```bash
-rm cookies/alibaba.json
-# 重新运行 /alibaba-inquiry，手动登录后自动保存
-```
+---
 
-## 许可证
-
-MIT License
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 联系方式
-
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
+**让外贸更简单！** 🚀

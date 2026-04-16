@@ -24,3 +24,12 @@ cookies/*.json
 
 # Worktrees
 .worktrees/
+
+# 运行时数据
+data/
+
+# 临时目录
+.claw/
+
+# PM2 日志
+logs/pm2/

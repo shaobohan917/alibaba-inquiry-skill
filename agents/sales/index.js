@@ -1,6 +1,7 @@
 const BrowserManager = require('../../core/browser-manager');
 const InquiryHandler = require('./inquiry-handler');
 const CustomerCRM = require('./customer-crm');
+const TaskQueue = require('../../core/task-queue');
 const { loadConfig, getEnv } = require('../../src/config');
 
 const ALIBABA_MESSAGE_URL = getEnv(
@@ -18,6 +19,7 @@ class SalesAgent {
     this.browser = null;
     this.inquiryHandler = null;
     this.crm = new CustomerCRM();
+    this.taskQueue = new TaskQueue(); // 任务队列
     this.options = options;
   }
 
@@ -203,6 +205,160 @@ class SalesAgent {
   }
 
   /**
+   * 执行指定任务（由 TaskExecutor 调用）
+   * @param {string} taskId - 任务 ID
+   */
+  async executeTask(taskId) {
+    console.log(`📍 执行任务：${taskId}\n`);
+
+    // 获取任务
+    const task = this.taskQueue.get(taskId);
+    if (!task) {
+      throw new Error(`任务不存在：${taskId}`);
+    }
+
+    console.log(`📋 任务信息:`);
+    console.log(`   类型：${task.type}`);
+    console.log(`   角色：${task.role}`);
+    console.log(`   参数：${JSON.stringify(task.payload)}\n`);
+
+    // 启动浏览器
+    this.browser = new BrowserManager();
+    await this.browser.launch('sales', 'default');
+
+    // 创建询盘处理器
+    this.inquiryHandler = new InquiryHandler(this.browser, this.config);
+
+    // 导航到阿里巴巴询盘页面
+    console.log('📍 正在打开阿里巴巴询盘页面...');
+    await this.browser.navigateTo(ALIBABA_MESSAGE_URL);
+
+    // 等待页面加载
+    await this.delay(3000, 5000);
+
+    // 检查是否登录
+    const page = this.browser.page;
+    const isLoginPage = page.url().includes('login');
+    if (isLoginPage) {
+      console.log('📍 检测到登录页，需要手动登录...\n');
+      await this.waitForLogin(page);
+    }
+
+    // 保存登录状态
+    await this.browser.saveCookies('sales', 'default');
+
+    console.log('\n✅ 业务员 Agent 已就绪\n');
+
+    // 根据任务类型执行具体操作
+    switch (task.payload.action) {
+      case 'handle_incoming_inquiries':
+        const maxCount = task.payload.maxCount || 5;
+        console.log(`📬 开始处理询盘，最多 ${maxCount} 个...\n`);
+        const results = await this.inquiryHandler.processInquiryList(maxCount);
+        const successCount = results.filter(r => r.success).length;
+        console.log(`\n✅ 任务完成：成功 ${successCount}/${results.length} 个询盘`);
+        return { success: true, processed: results.length, successCount };
+
+      case 'followup_customers':
+        console.log('📋 开始客户跟进...\n');
+        await this.showFollowUpCustomers();
+        return { success: true };
+
+      default:
+        throw new Error(`未知的任务类型：${task.payload.action}`);
+    }
+  }
+
+  /**
+   * Worker 模式 - 常驻监听任务（简单版：进程保持运行，每个任务独立浏览器）
+   */
+  async startWorker() {
+    console.log('🔧 业务员 Agent Worker 模式启动...');
+    console.log('📋 工作模式：进程常驻，每个任务独立浏览器窗口\n');
+
+    // 保持进程运行
+    process.on('SIGTERM', async () => {
+      console.log('\n🛑 收到退出信号，正在关闭...');
+      if (this.browser) {
+        await this.browser.close();
+      }
+      process.exit(0);
+    });
+
+    // 监听标准输入
+    process.stdin.on('data', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        if (message.type === 'task' && message.taskId) {
+          console.log(`\n═══════════════════════════════════════════`);
+          console.log(`📋 收到任务：${message.taskId}`);
+          console.log(`═══════════════════════════════════════════\n`);
+
+          try {
+            // 每个任务启动新浏览器
+            this.browser = new BrowserManager();
+            await this.browser.launch('sales', 'default');
+            this.inquiryHandler = new InquiryHandler(this.browser, this.config);
+
+            // 导航到阿里巴巴询盘页面
+            console.log('📍 正在打开阿里巴巴询盘页面...');
+            await this.browser.navigateTo(ALIBABA_MESSAGE_URL);
+            await this.delay(3000, 5000);
+
+            // 检查是否登录
+            const page = this.browser.page;
+            const isLoginPage = page.url().includes('login');
+            if (isLoginPage) {
+              console.log('📍 检测到登录页，需要手动登录...\n');
+              await this.waitForLogin(page);
+            }
+            await this.browser.saveCookies('sales', 'default');
+            console.log('\n✅ 已就绪\n');
+
+            // 获取任务并执行
+            const task = this.taskQueue.get(message.taskId);
+            if (!task) throw new Error(`任务不存在：${message.taskId}`);
+
+            switch (task.payload.action) {
+              case 'handle_incoming_inquiries':
+                const maxCount = task.payload.maxCount || 5;
+                console.log(`📬 开始处理询盘，最多 ${maxCount} 个...\n`);
+                const results = await this.inquiryHandler.processInquiryList(maxCount);
+                const successCount = results.filter(r => r.success).length;
+                console.log(`\n✅ 成功 ${successCount}/${results.length} 个询盘`);
+                break;
+              case 'followup_customers':
+                console.log('📋 开始客户跟进...\n');
+                await this.showFollowUpCustomers();
+                break;
+              default:
+                throw new Error(`未知的任务类型：${task.payload.action}`);
+            }
+
+            // 关闭浏览器
+            if (this.browser) {
+              await this.browser.close();
+              this.browser = null;
+            }
+            console.log(`\n✅ 任务 ${message.taskId} 完成，等待下一个任务...\n`);
+
+          } catch (error) {
+            console.error(`❌ 任务失败：${error.message}\n`);
+            if (this.browser) {
+              await this.browser.close();
+              this.browser = null;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ 消息解析失败:', error.message);
+      }
+    });
+
+    console.log('⏳ 等待任务输入...\n');
+  }
+
+  /**
    * 延迟工具
    */
   delay(min, max) {
@@ -223,6 +379,21 @@ async function main() {
         await agent.start();
         break;
 
+      case 'execute':
+        const taskId = process.argv[3];
+        if (taskId) {
+          await agent.executeTask(taskId);
+        } else {
+          console.log('用法：node agents/sales/index.js execute <taskId>');
+          process.exit(1);
+        }
+        break;
+
+      case 'worker':
+        // Worker 模式 - 常驻监听任务
+        await agent.startWorker();
+        break;
+
       case 'followup':
         await agent.showFollowUpCustomers();
         break;
@@ -237,7 +408,7 @@ async function main() {
         break;
 
       default:
-        console.log('用法：node agents/sales/index.js [start|followup|repurchase]');
+        console.log('用法：node agents/sales/index.js [start|execute|worker|followup|repurchase]');
     }
   } catch (error) {
     console.error('❌ 发生错误:', error.message);
@@ -250,8 +421,10 @@ async function main() {
 // 优雅退出
 process.on('SIGINT', async () => {
   console.log('\n📶 收到退出信号...');
-  await agent.stop();
-  console.log('👋 业务员 Agent 已退出');
+  if (agent) {
+    await agent.stop();
+    console.log('👋 业务员 Agent 已退出');
+  }
   process.exit(0);
 });
 
