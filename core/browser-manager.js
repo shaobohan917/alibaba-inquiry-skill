@@ -8,9 +8,12 @@ const CookieStore = require('./cookie-store');
  */
 class BrowserManager {
   constructor(options = {}) {
+    // 支持按角色使用不同的用户数据目录
+    const role = options.role || 'default';
     this.options = {
       cdpPort: options.cdpPort || 9222,
-      userDir: options.userDir || path.join(__dirname, '..', '.chrome-user-data'),
+      // 不同角色使用不同的浏览器用户数据目录，实现账号隔离
+      userDir: options.userDir || path.join(__dirname, '..', '.chrome-user-data', role),
       autoStart: options.autoStart !== false,
       ...options
     };
@@ -210,20 +213,9 @@ class BrowserManager {
    * 关闭浏览器
    */
   async close() {
-    // 保存所有 Tab 的 Cookie
-    if (this.context) {
-      const cookies = await this.context.cookies();
-      const cookieDir = path.join(__dirname, '..', 'cookies');
-      if (!fs.existsSync(cookieDir)) {
-        fs.mkdirSync(cookieDir, { recursive: true });
-      }
-      fs.writeFileSync(
-        path.join(cookieDir, 'last_session.json'),
-        JSON.stringify({
-          updatedAt: new Date().toISOString(),
-          cookies
-        })
-      );
+    // 保存所有 Tab 的 Cookie（按角色存储）
+    if (this.context && this.options.role) {
+      await this.saveCookies(this.options.role, 'default');
     }
 
     if (this.browser) {

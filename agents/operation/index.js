@@ -5,8 +5,9 @@ const { getEnv } = require('../../src/config');
 
 const ALIBABA_AD_URL = getEnv(
   'ALIBABA_AD_URL',
-  'https://p4p.alibaba.com/offer/offer_list.htm'
+  'https://i.alibaba.com/ads/p4p/campaign-manage.htm'
 );
+const OPERATION_CDP_PORT = parseInt(getEnv('OPERATION_CDP_PORT', '9223'), 10);
 
 /**
  * 运营 Agent - 增强版
@@ -39,8 +40,8 @@ class OperationAgent {
   async start() {
     console.log('🚀 运营 Agent 启动中...\n');
 
-    // 启动浏览器
-    this.browser = new BrowserManager();
+    // 启动浏览器，使用 operation 独立的浏览器配置和 CDP 端口
+    this.browser = new BrowserManager({ role: 'operation', cdpPort: OPERATION_CDP_PORT });
     const page = await this.browser.launch('operation', 'default');
 
     // 导航到推广后台

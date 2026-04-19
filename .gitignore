@@ -5,7 +5,7 @@ node_modules/
 .env
 
 # Cookie
-cookies/*.json
+# cookies/*.json
 
 # 日志
 *.log
@@ -16,7 +16,7 @@ cookies/*.json
 # 系统文件
 .DS_Store
 
-# Chrome 数据目录
+# Chrome 数据目录（缓存文件，不同步）
 .chrome-user-data/
 
 # Playwright MCP

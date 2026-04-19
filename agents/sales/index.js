@@ -8,6 +8,7 @@ const ALIBABA_MESSAGE_URL = getEnv(
   'ALIBABA_MESSAGE_URL',
   'https://message.alibaba.com/message/default.htm?spm=a2756.trade-list-seller.0.0.79e8601aewBszG#feedback/all'
 );
+const SALES_CDP_PORT = parseInt(getEnv('SALES_CDP_PORT', '9222'), 10);
 
 /**
  * 业务员 Agent
@@ -29,8 +30,8 @@ class SalesAgent {
   async start() {
     console.log('🚀 业务员 Agent 启动中...\n');
 
-    // 启动浏览器
-    this.browser = new BrowserManager();
+    // 启动浏览器，使用 sales 独立的浏览器配置和 CDP 端口
+    this.browser = new BrowserManager({ role: 'sales', cdpPort: SALES_CDP_PORT });
     const page = await this.browser.launch('sales', 'default');
 
     // 创建询盘处理器
@@ -222,8 +223,8 @@ class SalesAgent {
     console.log(`   角色：${task.role}`);
     console.log(`   参数：${JSON.stringify(task.payload)}\n`);
 
-    // 启动浏览器
-    this.browser = new BrowserManager();
+    // 启动浏览器，使用 sales 独立的浏览器配置和 CDP 端口
+    this.browser = new BrowserManager({ role: 'sales', cdpPort: SALES_CDP_PORT });
     await this.browser.launch('sales', 'default');
 
     // 创建询盘处理器
@@ -295,8 +296,8 @@ class SalesAgent {
           console.log(`═══════════════════════════════════════════\n`);
 
           try {
-            // 每个任务启动新浏览器
-            this.browser = new BrowserManager();
+            // 每个任务启动新浏览器，使用 sales 独立的浏览器配置
+            this.browser = new BrowserManager({ role: 'sales' });
             await this.browser.launch('sales', 'default');
             this.inquiryHandler = new InquiryHandler(this.browser, this.config);
 
