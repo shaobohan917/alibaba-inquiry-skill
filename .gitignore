@@ -31,5 +31,11 @@ data/
 # 临时目录
 .claw/
 
+# Claude Code 本地配置
+.claude/settings.local.json
+
 # PM2 日志
 logs/pm2/
+
+# web-app 日志
+web-app/logs/
