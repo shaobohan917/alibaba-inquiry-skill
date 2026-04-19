@@ -1,0 +1,84 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="48" x2="432" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B7CFF"/>
+      <stop offset="0.55" stop-color="#0756C8"/>
+      <stop offset="1" stop-color="#052E78"/>
+    </linearGradient>
+    <linearGradient id="globe" x1="126" y1="116" x2="386" y2="384" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6FD8FF"/>
+      <stop offset="0.55" stop-color="#1E8DFF"/>
+      <stop offset="1" stop-color="#0A4DA8"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="166" y1="138" x2="374" y2="358" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFD66B"/>
+      <stop offset="0.58" stop-color="#FF9E1B"/>
+      <stop offset="1" stop-color="#F26A21"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="148" y1="150" x2="364" y2="362" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#D8ECFF" stop-opacity="0.9"/>
+    </linearGradient>
+    <filter id="softShadow" x="28" y="34" width="456" height="456" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="18"/>
+      <feGaussianBlur stdDeviation="24"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.012 0 0 0 0 0.102 0 0 0 0 0.278 0 0 0 0.32 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+    <filter id="nodeGlow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="globeClip">
+      <circle cx="256" cy="256" r="142"/>
+    </clipPath>
+  </defs>
+
+  <rect x="48" y="48" width="416" height="416" rx="88" fill="url(#bg)" filter="url(#softShadow)"/>
+  <path d="M108 396C145 443 230 452 304 430C378 408 423 346 428 273C432 206 397 134 333 104C269 74 184 91 137 143C91 194 74 312 108 396Z" fill="#3EC6FF" opacity="0.1"/>
+
+  <circle cx="256" cy="256" r="150" fill="url(#globe)" opacity="0.22"/>
+  <circle cx="256" cy="256" r="142" stroke="#A9E8FF" stroke-opacity="0.6" stroke-width="4"/>
+  <g clip-path="url(#globeClip)" opacity="0.82">
+    <path d="M114 256H398" stroke="#BCEEFF" stroke-opacity="0.62" stroke-width="4"/>
+    <path d="M132 206H380" stroke="#BCEEFF" stroke-opacity="0.35" stroke-width="3"/>
+    <path d="M132 306H380" stroke="#BCEEFF" stroke-opacity="0.35" stroke-width="3"/>
+    <path d="M256 114C222 150 203 200 203 256C203 312 222 362 256 398" stroke="#BCEEFF" stroke-opacity="0.5" stroke-width="4"/>
+    <path d="M256 114C290 150 309 200 309 256C309 312 290 362 256 398" stroke="#BCEEFF" stroke-opacity="0.5" stroke-width="4"/>
+    <path d="M256 114V398" stroke="#BCEEFF" stroke-opacity="0.26" stroke-width="3"/>
+  </g>
+
+  <path d="M156 174L256 116L356 174V338L256 396L156 338V174Z" fill="#073A88" fill-opacity="0.62" stroke="#67D7FF" stroke-opacity="0.55" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M178 190L256 145L334 190V322L256 367L178 322V190Z" fill="url(#panel)" opacity="0.95"/>
+
+  <path d="M190 314C206 292 229 279 256 279C283 279 306 292 322 314" stroke="url(#gold)" stroke-width="20" stroke-linecap="round"/>
+  <path d="M204 201L256 171L308 201V261L256 291L204 261V201Z" fill="#0B63D1"/>
+  <path d="M224 213L256 195L288 213V249L256 267L224 249V213Z" fill="#F8FBFF"/>
+  <circle cx="256" cy="231" r="15" fill="url(#gold)"/>
+  <path d="M256 216V198M256 264V246M241 231H223M289 231H271M245 220L232 207M280 207L267 220M245 242L232 255M280 255L267 242" stroke="#0B63D1" stroke-width="7" stroke-linecap="round"/>
+
+  <path d="M160 242L115 220M352 242L397 220M173 326L126 356M339 326L386 356M256 145V93" stroke="#7FE4FF" stroke-opacity="0.85" stroke-width="7" stroke-linecap="round"/>
+  <path d="M160 242L115 220M352 242L397 220M173 326L126 356M339 326L386 356M256 145V93" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3" stroke-linecap="round"/>
+
+  <g filter="url(#nodeGlow)">
+    <circle cx="115" cy="220" r="18" fill="#13C4FF"/>
+    <circle cx="397" cy="220" r="18" fill="#13C4FF"/>
+    <circle cx="126" cy="356" r="18" fill="#FFAA24"/>
+    <circle cx="386" cy="356" r="18" fill="#FFAA24"/>
+    <circle cx="256" cy="93" r="18" fill="#FFD66B"/>
+  </g>
+  <circle cx="115" cy="220" r="8" fill="#FFFFFF"/>
+  <circle cx="397" cy="220" r="8" fill="#FFFFFF"/>
+  <circle cx="126" cy="356" r="8" fill="#FFFFFF"/>
+  <circle cx="386" cy="356" r="8" fill="#FFFFFF"/>
+  <circle cx="256" cy="93" r="8" fill="#FFFFFF"/>
+
+  <path d="M88 136C103 112 122 95 150 83" stroke="#9CE9FF" stroke-opacity="0.42" stroke-width="7" stroke-linecap="round"/>
+  <path d="M385 423C410 409 428 389 439 364" stroke="#FFD66B" stroke-opacity="0.5" stroke-width="7" stroke-linecap="round"/>
+</svg>
