@@ -6,6 +6,7 @@
   "description": "阿里国际站 AI 智能体协同系统 企业级桌面前端",
   "scripts": {
     "dev": "vite",
+    "test": "vitest",
     "backend:init": "node backend/scripts/init-db.js",
     "backend:dev": "node --watch backend/src/server.js",
     "backend:start": "node backend/src/server.js",
@@ -50,6 +51,7 @@
     "prettier": "^3.5.3",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.32.1",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^4.1.4"
   }
 }
