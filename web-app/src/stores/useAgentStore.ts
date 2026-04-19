@@ -1,74 +1,131 @@
 import { create } from 'zustand';
+import {
+  getAgentStatus,
+  startAgent,
+  stopAgent,
+  getAgentLogs,
+  subscribeAgentLogs,
+  type AgentStatus,
+  type LogEntry,
+} from '../api/agents';
 
-import type { AgentProfile } from '../types/agent';
-
-interface AgentState {
-  agents: AgentProfile[];
-  selectedAgentId: string;
-  selectAgent: (agentId: string) => void;
+interface AgentProfile {
+  id: string;
+  name: string;
+  role: string;
+  capability: string;
 }
 
-const initialAgents: AgentProfile[] = [
-  {
-    id: 'sales',
-    name: '业务员 Agent',
-    role: '询盘转化',
-    capability: '客户识别、报价建议、跟进节奏',
-    status: 'online',
-    handledToday: 86,
-  },
-  {
-    id: 'operation',
-    name: '运营 Agent',
-    role: '投流优化',
-    capability: '关键词、广告、商品诊断',
-    status: 'busy',
-    handledToday: 42,
-  },
-  {
-    id: 'procurement',
-    name: '采购 Agent',
-    role: '供应链比价',
-    capability: '1688 寻源、供应商评分',
-    status: 'online',
-    handledToday: 31,
-  },
-  {
-    id: 'inventory',
-    name: '库存 Agent',
-    role: '履约监控',
-    capability: '库存预警、发货排程',
-    status: 'online',
-    handledToday: 27,
-  },
-  {
-    id: 'logistics',
-    name: '物流 Agent',
-    role: '运费决策',
-    capability: '渠道对比、轨迹同步',
-    status: 'offline',
-    handledToday: 14,
-  },
-  {
-    id: 'design',
-    name: '设计 Agent',
-    role: '素材生产',
-    capability: '主图、详情页、海报生成',
-    status: 'busy',
-    handledToday: 19,
-  },
-  {
-    id: 'supervisor',
-    name: '主管 Agent',
-    role: '任务调度',
-    capability: '跨 Agent 编排、异常接管',
-    status: 'online',
-    handledToday: 118,
-  },
+const agentProfiles: AgentProfile[] = [
+  { id: 'sales', name: '业务员 Agent', role: '询盘转化', capability: '客户识别、报价建议、跟进节奏' },
+  { id: 'operation', name: '运营 Agent', role: '投流优化', capability: '关键词、广告、商品诊断' },
+  { id: 'procurement', name: '采购 Agent', role: '供应链比价', capability: '1688 寻源、供应商评分' },
+  { id: 'inventory', name: '库存 Agent', role: '履约监控', capability: '库存预警、发货排程' },
+  { id: 'logistics', name: '物流 Agent', role: '运费决策', capability: '渠道对比、轨迹同步' },
+  { id: 'design', name: '设计 Agent', role: '素材生产', capability: '主图、详情页、海报生成' },
+  { id: 'supervisor', name: '主管 Agent', role: '任务调度', capability: '跨 Agent 编排、异常接管' },
 ];
 
-export const useAgentStore = create<AgentState>((set) => ({
-  agents: initialAgents,
-  selectedAgentId: 'sales',
-  selectAgent: (agentId) => set({ selectedAgentId: agentId }),
+interface AgentState {
+  // 状态
+  agents: AgentStatus[];
+  logs: Map<string, LogEntry[]>;
+  subscriptions: Map<string, () => void>;
+  selectedAgentId: string | null;
+
+  // UI 状态
+  loading: boolean;
+  error: string | null;
+
+  // Actions
+  fetchStatus: () => Promise<void>;
+  startAgent: (role: string) => Promise<void>;
+  stopAgent: (role: string) => Promise<void>;
+  subscribeLogs: (role: string) => void;
+  clearLogs: (role: string) => void;
+  selectAgent: (agentId: string | null) => void;
+  getProfile: (roleId: string) => AgentProfile | undefined;
+}
+
+export const useAgentStore = create<AgentState>((set, get) => ({
+  agents: [],
+  logs: new Map(),
+  subscriptions: new Map(),
+  selectedAgentId: null,
+  loading: false,
+  error: null,
+
+  fetchStatus: async () => {
+    set({ loading: true, error: null });
+    try {
+      const agents = await getAgentStatus();
+      set({ agents, loading: false });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : '获取状态失败', loading: false });
+    }
+  },
+
+  startAgent: async (role) => {
+    set({ loading: true, error: null });
+    try {
+      await startAgent(role);
+      await get().fetchStatus();
+      get().subscribeLogs(role);
+      set({ loading: false });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : '启动失败', loading: false });
+    }
+  },
+
+  stopAgent: async (role) => {
+    set({ loading: true, error: null });
+    try {
+      await stopAgent(role);
+      await get().fetchStatus();
+      set({ loading: false });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : '停止失败', loading: false });
+    }
+  },
+
+  subscribeLogs: (role) => {
+    const { subscriptions, logs } = get();
+
+    // 已订阅则跳过
+    if (subscriptions.has(role)) return;
+
+    // 先加载历史日志
+    getAgentLogs(role, 100).then((history) => {
+      set((state) => ({
+        logs: new Map(state.logs).set(role, history),
+      }));
+    });
+
+    // 订阅实时日志
+    const unsubscribe = subscribeAgentLogs(role, (entry) => {
+      set((state) => {
+        const roleLogs = state.logs.get(role) || [];
+        const newLogs = [...roleLogs, entry].slice(-500); // 最多 500 条
+        return { logs: new Map(state.logs).set(role, newLogs) };
+      });
+    });
+
+    set((state) => ({
+      subscriptions: new Map(state.subscriptions).set(role, unsubscribe),
+    }));
+  },
+
+  clearLogs: (role) => {
+    set((state) => ({
+      logs: new Map(state.logs).set(role, []),
+    }));
+  },
+
+  selectAgent: (agentId) => {
+    set({ selectedAgentId: agentId });
+  },
+
+  getProfile: (roleId) => {
+    return agentProfiles.find(p => p.id === roleId);
+  },
 }));

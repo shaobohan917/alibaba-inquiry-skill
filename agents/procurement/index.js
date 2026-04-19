@@ -232,6 +232,33 @@ async function main() {
         await agent.start();
         break;
 
+      case 'worker':
+        // Worker 模式：进程常驻，等待任务输入
+        console.log('🔧 采购 Agent Worker 模式启动...');
+        console.log('📋 工作模式：进程常驻，每个任务独立浏览器窗口');
+        console.log('⏳ 等待任务输入...\n');
+
+        // 保持进程运行，监听退出信号
+        process.on('SIGTERM', async () => {
+          console.log('\n🛑 收到退出信号，正在关闭...');
+          await agent.scraper.close();
+          process.exit(0);
+        });
+
+        // 监听标准输入以保持事件循环活跃
+        process.stdin.on('data', async (data) => {
+          try {
+            const message = JSON.parse(data.toString());
+            console.log(`📋 收到消息：${JSON.stringify(message)}`);
+          } catch (e) {
+            console.log(`收到输入：${data.toString()}`);
+          }
+        });
+
+        // 保持进程运行
+        await new Promise(() => {});
+        break;
+
       case 'compare':
         const productName = process.argv[3] || '热销产品';
         await agent.comparePrices(productName);

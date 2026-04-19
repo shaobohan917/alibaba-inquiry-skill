@@ -410,6 +410,34 @@ async function main() {
         await agent.start();
         break;
 
+      case 'worker':
+        // Worker 模式：进程常驻，等待任务输入
+        console.log('🔧 运营 Agent Worker 模式启动...');
+        console.log('📋 工作模式：进程常驻，每个任务独立浏览器窗口');
+        console.log('⏳ 等待任务输入...\n');
+
+        // 保持进程运行，监听退出信号
+        process.on('SIGTERM', async () => {
+          console.log('\n🛑 收到退出信号，正在关闭...');
+          await agent.stop();
+          process.exit(0);
+        });
+
+        // 监听标准输入以保持事件循环活跃
+        process.stdin.on('data', async (data) => {
+          try {
+            const message = JSON.parse(data.toString());
+            console.log(`📋 收到消息：${JSON.stringify(message)}`);
+            // 实际任务处理逻辑
+          } catch (e) {
+            console.log(`收到输入：${data.toString()}`);
+          }
+        });
+
+        // 保持进程运行
+        await new Promise(() => {});
+        break;
+
       case 'metrics':
         agent.analytics.printMetricsReport();
         break;
@@ -421,7 +449,7 @@ async function main() {
         break;
 
       default:
-        console.log('用法：node agents/operation/index.js [start|metrics|analyze]');
+        console.log('用法：node agents/operation/index.js [start|worker|metrics|analyze]');
         console.log('\n示例:');
         console.log('  /alibaba-operation 开始数据采集');
         console.log('  /alibaba-operation 查看指标');

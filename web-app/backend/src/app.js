@@ -8,9 +8,11 @@ import { inquiryRoutes } from './routes/inquiries.js';
 import { salesRoutes } from './routes/sales.js';
 import { settingRoutes } from './routes/settings.js';
 import { taskRoutes } from './routes/tasks.js';
+import { createAgentRoutes } from './routes/agents.js';
 
-export function createApp(repositories) {
+export function createApp(repositories, options = {}) {
   const app = express();
+  const { agentManager, agentLogManager } = options;
 
   app.use(
     cors({
@@ -35,6 +37,12 @@ export function createApp(repositories) {
   app.use('/api/sales', salesRoutes(repositories));
   app.use('/api/ad-metrics', adMetricRoutes(repositories));
   app.use('/api/settings', settingRoutes(repositories));
+
+  // Agent 管理路由
+  if (agentManager && agentLogManager) {
+    app.use('/api/agents', createAgentRoutes({ agentManager, agentLogManager }));
+    console.log('[App] Agent routes enabled');
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);

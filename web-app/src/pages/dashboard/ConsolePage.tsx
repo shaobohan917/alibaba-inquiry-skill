@@ -1,66 +1,115 @@
-import { Alert, Card, Col, Row, Space, Statistic, Table, Tag, Typography } from 'antd';
-
+import { Alert, Row, Col, Space, Typography, Empty } from 'antd';
+import { useEffect } from 'react';
 import { useAgentStore } from '../../stores/useAgentStore';
-
-const taskColumns = [
-  { title: '任务', dataIndex: 'task' },
-  { title: '负责人', dataIndex: 'owner' },
-  { title: '状态', dataIndex: 'status' },
-  { title: '预计收益', dataIndex: 'value' },
-];
-
-const taskData = [
-  { key: 1, task: '高意向询盘自动报价', owner: '业务员 Agent', status: '处理中', value: '¥42,000' },
-  { key: 2, task: 'P4P 关键词预算重分配', owner: '运营 Agent', status: '待确认', value: '12.8% ROI' },
-  { key: 3, task: '热销 SKU 备货预警', owner: '库存 Agent', status: '已完成', value: '7 天安全库存' },
-];
+import { AgentCard } from '../../components/agent/AgentCard';
+import { AgentLogs } from '../../components/agent/AgentLogs';
 
 export function ConsolePage() {
-  const agents = useAgentStore((state) => state.agents);
+  const {
+    agents,
+    logs,
+    subscriptions,
+    selectedAgentId,
+    loading,
+    error,
+    fetchStatus,
+    startAgent,
+    stopAgent,
+    subscribeLogs,
+    clearLogs,
+    selectAgent,
+    getProfile,
+  } = useAgentStore();
+
+  // 初始化加载状态
+  useEffect(() => {
+    fetchStatus();
+  }, []);
+
+  // 自动订阅运行中 Agent 的日志
+  useEffect(() => {
+    agents.forEach((agent) => {
+      if (agent.status === 'running' && !subscriptions.has(agent.role)) {
+        subscribeLogs(agent.role);
+      }
+    });
+  }, [agents]);
+
+  const handleStart = async (role: string) => {
+    await startAgent(role);
+  };
+
+  const handleStop = async (role: string) => {
+    await stopAgent(role);
+  };
+
+  const handleCardClick = (role: string) => {
+    selectAgent(role);
+  };
 
   return (
-    <Space direction="vertical" size={20} className="page-stack">
+    <Space direction="vertical" size={20} className="page-stack" style={{ width: '100%' }}>
       <div>
         <Typography.Title level={2}>主控制台</Typography.Title>
-        <Typography.Text type="secondary">统一查看 Agent 协作状态、关键任务与异常提醒。</Typography.Text>
+        <Typography.Text type="secondary">
+          统一查看 Agent 协作状态、关键任务与异常提醒。
+        </Typography.Text>
       </div>
-      <Alert
-        message="主管 Agent 已发现 3 个可增收任务"
-        description="建议优先处理高意向询盘报价与广告预算重分配，预计本周可提升订单转化。"
-        type="info"
-        showIcon
-      />
+
+      {error && (
+        <Alert
+          message="错误"
+          description={error}
+          type="error"
+          showIcon
+          closable
+        />
+      )}
+
+      {/* Agent 卡片网格 */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="今日自动化任务" value={337} suffix="次" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="询盘响应率" value={96.7} suffix="%" precision={1} />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="预估机会金额" value={238000} prefix="¥" />
-          </Card>
-        </Col>
-      </Row>
-      <Row gutter={[16, 16]}>
-        {agents.map((agent) => (
-          <Col xs={24} sm={12} xl={8} key={agent.id}>
-            <Card title={agent.name} extra={<Tag color={agent.status === 'online' ? 'green' : agent.status === 'busy' ? 'gold' : 'default'}>{agent.status}</Tag>}>
-              <Typography.Text strong>{agent.role}</Typography.Text>
-              <Typography.Paragraph type="secondary">{agent.capability}</Typography.Paragraph>
-              <Statistic title="今日处理" value={agent.handledToday} suffix="项" />
-            </Card>
+        {agents.length === 0 ? (
+          <Col span={24}>
+            <Empty description="加载中..." />
           </Col>
-        ))}
+        ) : (
+          agents.map((agent) => {
+            const profile = getProfile(agent.role);
+            return (
+              <Col xs={24} sm={12} lg={8} xl={6} key={agent.role}>
+                <div onClick={() => handleCardClick(agent.role)} style={{ cursor: 'pointer' }}>
+                  <AgentCard
+                    role={profile?.role || agent.role}
+                    name={profile?.name || agent.role}
+                    capability={profile?.capability || ''}
+                    status={agent.status}
+                    pid={agent.pid}
+                    onStart={() => handleStart(agent.role)}
+                    onStop={() => handleStop(agent.role)}
+                    loading={loading}
+                  />
+                </div>
+              </Col>
+            );
+          })
+        )}
       </Row>
-      <Card title="关键任务队列">
-        <Table columns={taskColumns} dataSource={taskData} pagination={false} />
-      </Card>
+
+      {/* 日志面板 */}
+      {selectedAgentId ? (
+        <AgentLogs
+          role={selectedAgentId}
+          logs={logs.get(selectedAgentId) || []}
+          onClear={() => clearLogs(selectedAgentId)}
+        />
+      ) : (
+        <Alert
+          message="选择一个 Agent 查看日志"
+          description="点击上方的 Agent 卡片可查看实时日志输出"
+          type="info"
+          showIcon
+        />
+      )}
     </Space>
   );
 }
