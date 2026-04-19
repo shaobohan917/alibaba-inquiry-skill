@@ -19,6 +19,9 @@ node_modules/
 # Chrome 数据目录（缓存文件，不同步）
 .chrome-user-data/
 
+# Claude Code 临时目录
+.claude/worktrees/
+
 # Playwright MCP
 .playwright-mcp/
 
