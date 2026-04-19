@@ -227,13 +227,7 @@ export function createAgentRoutes(deps) {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    // 发送历史日志
-    const history = agentLogManager.getLogs(role, { limit: 100 });
-    for (const entry of history) {
-      res.write(`event: log\ndata: ${JSON.stringify(entry)}\n\n`);
-    }
-
-    // 订阅实时日志
+    // 不发送历史日志，只订阅实时日志
     const onLog = (entry) => {
       if (entry.role === role) {
         res.write(`event: log\ndata: ${JSON.stringify(entry)}\n\n`);

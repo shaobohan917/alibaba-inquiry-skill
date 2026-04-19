@@ -122,9 +122,39 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   clearLogs: (role) => {
+    // 清空前端日志
     set((state) => ({
       logs: new Map(state.logs).set(role, []),
     }));
+
+    // 取消旧的订阅并从 Map 中删除
+    const { subscriptions } = get();
+    const unsubscribe = subscriptions.get(role);
+    if (unsubscribe) {
+      unsubscribe();
+      // 必须先删除旧的订阅记录，不然重新订阅时会被跳过
+      set((state) => {
+        const newSubs = new Map(state.subscriptions);
+        newSubs.delete(role);
+        return { subscriptions: newSubs };
+      });
+    }
+
+    // 重新订阅实时日志（不加载历史日志，只显示清空后的新日志）
+    setTimeout(() => {
+      // 直接建立 SSE 订阅，不加载历史日志
+      const unsubscribe = subscribeAgentLogs(role, (entry) => {
+        set((state) => {
+          const roleLogs = state.logs.get(role) || [];
+          const newLogs = [...roleLogs, entry].slice(-500);
+          return { logs: new Map(state.logs).set(role, newLogs) };
+        });
+      });
+      set((state) => ({
+        subscriptions: new Map(state.subscriptions).set(role, unsubscribe),
+      }));
+      console.log(`${role} 日志已清空，只监听新日志`);
+    }, 100);
   },
 
   selectAgent: (agentId) => {

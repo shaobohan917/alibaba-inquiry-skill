@@ -147,7 +147,7 @@ export class AgentManager extends EventEmitter {
     procInfo.status = AgentStatus.STARTING;
     this.processes.set(role, procInfo);
 
-    // 5. 构建启动参数
+    // 5. 构建启动参数 - worker 模式，启动后自动执行默认任务
     const spawnArgs = [agentPath, 'worker', ...args];
     console.log(`[AgentManager] 启动 Agent: ${role}, pid: ${procInfo.pid}`);
 
@@ -191,6 +191,11 @@ export class AgentManager extends EventEmitter {
       // 12. 发送启动通知
       this.emit('start', { role, taskId, pid: spawned.pid });
       console.log(`[AgentManager] Agent "${role}" 已启动 (PID: ${spawned.pid})`);
+
+      // 13. 等待进程就绪后自动发送默认任务
+      setTimeout(() => {
+        this._sendDefaultTask(spawned, role);
+      }, 500);
 
       return procInfo;
     } catch (error) {
@@ -461,6 +466,41 @@ export class AgentManager extends EventEmitter {
 
     // 触发退出事件
     this.emit('exit', { role, taskId, code, signal });
+  }
+
+  /**
+   * 发送默认任务到 Agent 进程
+   * @private
+   */
+  _sendDefaultTask(spawned, role) {
+    // 按角色定义默认任务
+    const defaultTasks = {
+      sales: {
+        action: 'handle_incoming_inquiries',
+        maxCount: 5
+      }
+      // 其他角色的默认任务可在此添加
+    };
+
+    const task = defaultTasks[role];
+    if (!task) {
+      console.log(`[AgentManager] 角色 "${role}" 无默认任务，跳过自动执行`);
+      return;
+    }
+
+    const taskId = `auto-${role}-${Date.now()}`;
+    const message = {
+      type: 'task',
+      taskId,
+      payload: task
+    };
+
+    try {
+      spawned.stdin.write(JSON.stringify(message) + '\n');
+      console.log(`[AgentManager] 已发送默认任务到 ${role}: ${task.action}`);
+    } catch (error) {
+      console.error(`[AgentManager] 发送默认任务失败：${error.message}`);
+    }
   }
 }
 

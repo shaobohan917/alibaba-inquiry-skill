@@ -98,14 +98,15 @@ export function subscribeAgentLogs(
 ): () => void {
   const eventSource = new EventSource(`${BASE_URL}/api/agents/${role}/logs/sse`);
 
-  eventSource.onmessage = (e) => {
+  // 使用 addEventListener 接收 event: log 类型的事件
+  eventSource.addEventListener('log', (e) => {
     try {
       const entry = JSON.parse(e.data);
       onLog(entry);
     } catch (err) {
       console.error('SSE 消息解析失败:', err);
     }
-  };
+  });
 
   eventSource.onerror = (e) => {
     console.error(`SSE 连接错误 [${role}]:`, e);

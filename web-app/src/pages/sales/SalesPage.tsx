@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button, Card, Col, Form, Input, Row, Space, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { useAgentStore } from '../../stores/useAgentStore';
+import { AgentLogs } from '../../components/agent/AgentLogs';
 
 import { salesService } from '../../services/sales-service';
 import type { ReplyDraft, ReplyDraftRequest, SalesLead, SalesOverview } from '../../services/sales-service';
@@ -36,7 +38,17 @@ export function SalesPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
+  // 从 useAgentStore 获取日志相关状态和方法
+  const {
+    logs,
+    subscribeLogs,
+    clearLogs,
+  } = useAgentStore();
+
+  // 初始化订阅业务员 Agent 日志
   useEffect(() => {
+    subscribeLogs('sales');
+
     let mounted = true;
 
     async function loadSalesData() {
@@ -62,7 +74,7 @@ export function SalesPage() {
     return () => {
       mounted = false;
     };
-  }, [messageApi]);
+  }, [subscribeLogs, messageApi]);
 
   async function handleGenerate(values: ReplyDraftRequest) {
     setGenerating(true);
@@ -169,6 +181,12 @@ export function SalesPage() {
           </Card>
         </Col>
       </Row>
+      {/* 业务员 Agent 实时日志 */}
+      <AgentLogs
+        role="sales"
+        logs={logs.get('sales') || []}
+        onClear={() => clearLogs('sales')}
+      />
     </Space>
   );
 }
