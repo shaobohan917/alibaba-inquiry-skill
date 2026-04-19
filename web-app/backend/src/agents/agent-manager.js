@@ -334,9 +334,34 @@ export class AgentManager extends EventEmitter {
     const results = [];
     // 返回所有允许的角色状态，包括未启动的
     for (const role of this.allowedRoles) {
-      const status = this.getStatus(role);
-      if (status) {
-        results.push(status);
+      const procInfo = this.processes.get(role);
+      if (procInfo) {
+        results.push({
+          role: procInfo.role,
+          taskId: procInfo.taskId,
+          status: procInfo.status,
+          pid: procInfo.pid,
+          startedAt: procInfo.startedAt,
+          exitedAt: procInfo.exitedAt,
+          exitCode: procInfo.exitCode,
+          error: procInfo.error,
+          uptime: procInfo.startedAt ?
+            (procInfo.exitedAt || new Date()) - procInfo.startedAt :
+            null
+        });
+      } else {
+        // 未启动过的 Agent，返回 stopped 状态
+        results.push({
+          role,
+          taskId: null,
+          status: AgentStatus.STOPPED,
+          pid: null,
+          startedAt: null,
+          exitedAt: null,
+          exitCode: null,
+          error: null,
+          uptime: null
+        });
       }
     }
     return results;

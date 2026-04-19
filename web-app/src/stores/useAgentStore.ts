@@ -54,14 +54,20 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   selectedAgentId: null,
   loading: false,
   error: null,
+  fetchFailed: false, // 标记初始加载是否失败
 
-  fetchStatus: async () => {
+  fetchStatus: async (showError = false) => {
     set({ loading: true, error: null });
     try {
       const agents = await getAgentStatus();
-      set({ agents, loading: false });
+      set({ agents, loading: false, fetchFailed: false });
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : '获取状态失败', loading: false });
+      // 只在显式请求显示错误时才设置 error 状态
+      set({
+        error: showError && error instanceof Error ? error.message : null,
+        loading: false,
+        fetchFailed: true
+      });
     }
   },
 

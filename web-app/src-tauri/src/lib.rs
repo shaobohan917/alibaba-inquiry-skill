@@ -1,15 +1,45 @@
+use tauri::RunEvent;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             app_health,
             get_sales_overview,
             get_sales_leads,
             create_reply_draft
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        ]);
+
+    // 生产模式：启动时自动运行后端
+    #[cfg(not(debug_assertions))]
+    {
+        use std::env;
+        use std::path::PathBuf;
+
+        let exe_dir = env::current_exe()
+            .ok()
+            .and_then(|pb| pb.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| PathBuf::from("."));
+
+        let backend_path = exe_dir.join("../Resources/backend/src/server.js");
+
+        if backend_path.exists() {
+            println!("Starting backend from: {:?}", backend_path);
+            let _ = std::process::Command::new("node")
+                .arg(&backend_path)
+                .spawn();
+        }
+    }
+
+    let app_handle = app.build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app_handle.run(|_app_handle, event| {
+        if let RunEvent::Exit = event {
+            // 清理后端进程（如果需要）
+        }
+    });
 }
 
 #[tauri::command]

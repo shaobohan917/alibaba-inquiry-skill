@@ -1,5 +1,5 @@
-import { Alert, Row, Col, Space, Typography, Empty } from 'antd';
-import { useEffect } from 'react';
+import { Alert, Row, Col, Space, Typography, Empty, Button } from 'antd';
+import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../stores/useAgentStore';
 import { AgentCard } from '../../components/agent/AgentCard';
 import { AgentLogs } from '../../components/agent/AgentLogs';
@@ -19,11 +19,14 @@ export function ConsolePage() {
     clearLogs,
     selectAgent,
     getProfile,
+    fetchFailed,
   } = useAgentStore();
+
+  const [userInteracted, setUserInteracted] = useState(false);
 
   // 初始化加载状态
   useEffect(() => {
-    fetchStatus();
+    fetchStatus(false); // 初始加载不显示错误
   }, []);
 
   // 自动订阅运行中 Agent 的日志
@@ -36,15 +39,21 @@ export function ConsolePage() {
   }, [agents]);
 
   const handleStart = async (role: string) => {
+    setUserInteracted(true);
     await startAgent(role);
   };
 
   const handleStop = async (role: string) => {
+    setUserInteracted(true);
     await stopAgent(role);
   };
 
   const handleCardClick = (role: string) => {
     selectAgent(role);
+  };
+
+  const handleRetry = () => {
+    fetchStatus(true);
   };
 
   return (
@@ -56,11 +65,39 @@ export function ConsolePage() {
         </Typography.Text>
       </div>
 
-      {error && (
+      {error && userInteracted && (
         <Alert
           message="错误"
-          description={error}
+          description={
+            <div>
+              <p>{error}</p>
+              <p style={{ marginTop: 8 }}>
+                <Button type="primary" size="small" onClick={handleRetry}>
+                  重试
+                </Button>
+              </p>
+            </div>
+          }
           type="error"
+          showIcon
+          closable
+        />
+      )}
+
+      {fetchFailed && !userInteracted && (
+        <Alert
+          message="后端服务未连接"
+          description={
+            <div>
+              <p>无法连接到后端 API 服务，请确认后端已启动。</p>
+              <p style={{ marginTop: 8 }}>
+                <Button type="primary" size="small" onClick={handleRetry}>
+                  重试
+                </Button>
+              </p>
+            </div>
+          }
+          type="warning"
           showIcon
           closable
         />

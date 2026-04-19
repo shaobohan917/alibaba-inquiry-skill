@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
+import { HashRouter, Navigate, Routes, Route } from 'react-router';
 
 import { AppLayout } from '../components/layout/AppLayout';
 import { LoginPage } from '../pages/auth/LoginPage';
@@ -8,25 +8,20 @@ import { OperationPage } from '../pages/operation/OperationPage';
 import { SalesPage } from '../pages/sales/SalesPage';
 import { SettingsPage } from '../pages/settings/SettingsPage';
 
-const router = createBrowserRouter([
-  {
-    path: '/login',
-    element: <LoginPage />,
-  },
-  {
-    path: '/',
-    element: <AppLayout />,
-    children: [
-      { index: true, element: <Navigate to="/console" replace /> },
-      { path: 'console', element: <ConsolePage /> },
-      { path: 'dashboard', element: <DashboardPage /> },
-      { path: 'sales', element: <SalesPage /> },
-      { path: 'operation', element: <OperationPage /> },
-      { path: 'settings', element: <SettingsPage /> },
-    ],
-  },
-]);
-
 export function AppRouter() {
-  return <RouterProvider router={router} />;
+  return (
+    <HashRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Navigate to="/console" replace />} />
+          <Route path="console" element={<ConsolePage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="sales" element={<SalesPage />} />
+          <Route path="operation" element={<OperationPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+      </Routes>
+    </HashRouter>
+  );
 }
