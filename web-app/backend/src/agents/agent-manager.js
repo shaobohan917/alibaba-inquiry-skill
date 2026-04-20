@@ -11,10 +11,15 @@
 
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const AGENTS_ROOT = [
+  path.resolve(__dirname, '../../../agents'),
+  path.resolve(__dirname, '../../../../agents')
+].find((candidate) => fs.existsSync(candidate)) || path.resolve(__dirname, '../../../agents');
 
 // 角色白名单 - 只允许已定义的 7 大 Agent 角色
 const ALLOWED_ROLES = new Set([
@@ -29,13 +34,13 @@ const ALLOWED_ROLES = new Set([
 
 // 角色到 Agent 文件路径的映射
 const ROLE_TO_AGENT_PATH = {
-  supervisor: path.join(__dirname, '../../../../agents/supervisor/index.js'),
-  sales: path.join(__dirname, '../../../../agents/sales/index.js'),
-  operation: path.join(__dirname, '../../../../agents/operation/index.js'),
-  design: path.join(__dirname, '../../../../agents/design/index.js'),
-  procurement: path.join(__dirname, '../../../../agents/procurement/index.js'),
-  inventory: path.join(__dirname, '../../../../agents/inventory/index.js'),
-  logistics: path.join(__dirname, '../../../../agents/logistics/index.js')
+  supervisor: path.join(AGENTS_ROOT, 'supervisor/index.js'),
+  sales: path.join(AGENTS_ROOT, 'sales/index.js'),
+  operation: path.join(AGENTS_ROOT, 'operation/index.js'),
+  design: path.join(AGENTS_ROOT, 'design/index.js'),
+  procurement: path.join(AGENTS_ROOT, 'procurement/index.js'),
+  inventory: path.join(AGENTS_ROOT, 'inventory/index.js'),
+  logistics: path.join(AGENTS_ROOT, 'logistics/index.js')
 };
 
 /**
@@ -82,7 +87,10 @@ export class AgentManager extends EventEmitter {
   constructor(options = {}) {
     super();
     this.logManager = options.logManager;
-    this.nodePath = options.nodePath || 'node';
+    this.nodePath = options.nodePath || process.execPath;
+
+    // EventEmitter 的 "error" 事件没有监听器时会抛异常；Agent 错误不应拖垮 API 服务。
+    this.on('error', () => {});
 
     // 进程 registry: role -> AgentProcessInfo
     this.processes = new Map();

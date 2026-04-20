@@ -5,3 +5,4 @@ dist-ssr
 src-tauri/target
 src-tauri/Cargo.lock
 backend/logs/
+src-tauri/resources/

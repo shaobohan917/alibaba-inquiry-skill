@@ -1,3 +1,6 @@
+use std::sync::{Arc, Mutex};
+#[cfg(not(debug_assertions))]
+use tauri::Manager;
 use tauri::RunEvent;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -11,36 +14,347 @@ pub fn run() {
             create_reply_draft
         ]);
 
-    // 生产模式：启动时自动运行后端
-    #[cfg(not(debug_assertions))]
-    {
-        use std::env;
-        use std::path::PathBuf;
-
-        let exe_dir = env::current_exe()
-            .ok()
-            .and_then(|pb| pb.parent().map(|p| p.to_path_buf()))
-            .unwrap_or_else(|| PathBuf::from("."));
-
-        let backend_path = exe_dir.join("../Resources/backend/src/server.js");
-
-        if backend_path.exists() {
-            println!("Starting backend from: {:?}", backend_path);
-            let _ = std::process::Command::new("node")
-                .arg(&backend_path)
-                .spawn();
-        }
-    }
-
     let app_handle = app.build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app_handle.run(|_app_handle, event| {
+    let backend_child: Arc<Mutex<Option<std::process::Child>>> = Arc::new(Mutex::new(None));
+
+    #[cfg(not(debug_assertions))]
+    {
+        let child = start_backend(&app_handle);
+        *backend_child.lock().expect("backend child lock poisoned") = child;
+    }
+
+    app_handle.run(move |_app_handle, event| {
         if let RunEvent::Exit = event {
-            // 清理后端进程（如果需要）
+            if let Some(mut child) = backend_child
+                .lock()
+                .expect("backend child lock poisoned")
+                .take()
+            {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
         }
     });
 }
+
+#[cfg(not(debug_assertions))]
+fn start_backend(app: &tauri::App) -> Option<std::process::Child> {
+    use std::fs;
+    use std::io::Write;
+    use std::net::{SocketAddr, TcpStream};
+    use std::process::{Command, Stdio};
+    use std::time::Duration;
+
+    let app_data_dir = match app.path().app_data_dir() {
+        Ok(path) => path,
+        Err(error) => {
+            eprintln!("Failed to resolve app data directory: {error}");
+            return None;
+        }
+    };
+    if let Err(error) = fs::create_dir_all(&app_data_dir) {
+        eprintln!("Failed to create app data directory {:?}: {error}", app_data_dir);
+        return None;
+    }
+
+    let logs_dir = app_data_dir.join("logs");
+    if let Err(error) = fs::create_dir_all(&logs_dir) {
+        eprintln!("Failed to create backend logs directory {:?}: {error}", logs_dir);
+        return None;
+    }
+
+    let launcher_log_path = logs_dir.join("backend-launcher.log");
+    let log_launcher = |message: &str| {
+        if let Ok(mut file) = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&launcher_log_path)
+        {
+            let _ = writeln!(file, "{message}");
+        }
+    };
+
+    log_launcher("Starting backend launcher");
+    log_launcher(&format!("App data directory: {:?}", app_data_dir));
+
+    let backend_addr: SocketAddr = "127.0.0.1:3001".parse().ok()?;
+    if TcpStream::connect_timeout(&backend_addr, Duration::from_millis(300)).is_ok() {
+        println!("Backend already listening on http://127.0.0.1:3001");
+        log_launcher("Backend already listening on http://127.0.0.1:3001; skip spawn");
+        return None;
+    }
+
+    let resource_dir = match app.path().resource_dir() {
+        Ok(path) => path,
+        Err(error) => {
+            eprintln!("Failed to resolve app resource directory: {error}");
+            log_launcher(&format!("Failed to resolve app resource directory: {error}"));
+            return None;
+        }
+    };
+    let resource_archive = resource_dir.join("backend-runtime.tar.gz");
+    log_launcher(&format!("Backend runtime archive: {:?}", resource_archive));
+    if !resource_archive.exists() {
+        eprintln!("Bundled backend runtime archive missing: {:?}", resource_archive);
+        log_launcher(&format!("Bundled backend runtime archive missing: {:?}", resource_archive));
+        return None;
+    }
+
+    let runtime_dir = app_data_dir.join("backend-runtime");
+    let version_file = runtime_dir.join(".runtime-version");
+    let chrome_user_data_root = app_data_dir.join("chrome-user-data");
+    let legacy_chrome_user_data_root = runtime_dir.join("app/.chrome-user-data");
+    if let Err(error) = fs::create_dir_all(&chrome_user_data_root) {
+        eprintln!("Failed to create Chrome user data root: {error}");
+        log_launcher(&format!(
+            "Failed to create Chrome user data root {:?}: {error}",
+            chrome_user_data_root
+        ));
+        return None;
+    }
+    let archive_metadata = match fs::metadata(&resource_archive) {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            eprintln!(
+                "Failed to read backend runtime archive metadata {:?}: {error}",
+                resource_archive
+            );
+            log_launcher(&format!(
+                "Failed to read backend runtime archive metadata {:?}: {error}",
+                resource_archive
+            ));
+            return None;
+        }
+    };
+    let archive_modified = archive_metadata
+        .modified()
+        .ok()
+        .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    let runtime_stamp = format!(
+        "{}:{}:{}",
+        env!("CARGO_PKG_VERSION"),
+        archive_metadata.len(),
+        archive_modified
+    );
+
+    if fs::read_to_string(&version_file).ok().as_deref() != Some(runtime_stamp.as_str()) {
+        if runtime_dir.exists() {
+            if legacy_chrome_user_data_root.exists() {
+                match migrate_chrome_user_data(&legacy_chrome_user_data_root, &chrome_user_data_root) {
+                    Ok(migrated_roles) if migrated_roles > 0 => {
+                        log_launcher(&format!(
+                            "Migrated {migrated_roles} Chrome user data profile(s) from {:?} to {:?} before runtime refresh",
+                            legacy_chrome_user_data_root, chrome_user_data_root
+                        ));
+                    }
+                    Ok(_) => {}
+                    Err(error) => {
+                        log_launcher(&format!(
+                            "Failed to migrate Chrome user data from {:?} to {:?} before runtime refresh: {error}",
+                            legacy_chrome_user_data_root, chrome_user_data_root
+                        ));
+                    }
+                }
+            }
+            log_launcher(&format!("Removing stale backend runtime: {:?}", runtime_dir));
+            if let Err(error) = fs::remove_dir_all(&runtime_dir) {
+                eprintln!("Failed to remove stale backend runtime {:?}: {error}", runtime_dir);
+                log_launcher(&format!("Failed to remove stale backend runtime {:?}: {error}", runtime_dir));
+                return None;
+            }
+        }
+        log_launcher("Extracting backend runtime archive");
+        let extract_output = Command::new("/usr/bin/tar")
+            .arg("-xzf")
+            .arg(&resource_archive)
+            .arg("-C")
+            .arg(&app_data_dir)
+            .output();
+        match extract_output {
+            Ok(output) if output.status.success() => {
+                log_launcher("Backend runtime archive extracted successfully");
+            }
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                eprintln!("Failed to extract backend runtime archive: {:?}", output.status);
+                log_launcher(&format!("Failed to extract backend runtime archive: {:?}", output.status));
+                if !stdout.trim().is_empty() {
+                    log_launcher(&format!("tar stdout: {}", stdout.trim()));
+                }
+                if !stderr.trim().is_empty() {
+                    log_launcher(&format!("tar stderr: {}", stderr.trim()));
+                }
+                return None;
+            }
+            Err(error) => {
+                eprintln!("Failed to run tar for backend runtime archive: {error}");
+                log_launcher(&format!("Failed to run tar for backend runtime archive: {error}"));
+                return None;
+            }
+        }
+        if !runtime_dir.exists() {
+            eprintln!("Backend runtime extraction did not create {:?}", runtime_dir);
+            log_launcher(&format!("Backend runtime extraction did not create {:?}", runtime_dir));
+            return None;
+        }
+        if let Err(error) = fs::write(&version_file, &runtime_stamp) {
+            eprintln!("Failed to write backend runtime version: {error}");
+            log_launcher(&format!("Failed to write backend runtime version: {error}"));
+        } else {
+            log_launcher(&format!("Backend runtime stamp set to {runtime_stamp}"));
+        }
+    } else {
+        log_launcher(&format!(
+            "Backend runtime already prepared for stamp {runtime_stamp}"
+        ));
+    }
+
+    let node_path = runtime_dir.join("bin/node");
+    let app_root = runtime_dir.join("app");
+    let backend_entry = app_root.join("backend/src/server.js");
+    let data_dir = app_data_dir.join("data");
+
+    if !node_path.exists() {
+        eprintln!("Bundled Node binary missing: {:?}", node_path);
+        log_launcher(&format!("Bundled Node binary missing: {:?}", node_path));
+        return None;
+    }
+    if !backend_entry.exists() {
+        eprintln!("Bundled backend entry missing: {:?}", backend_entry);
+        log_launcher(&format!("Bundled backend entry missing: {:?}", backend_entry));
+        return None;
+    }
+
+    if let Err(error) = fs::create_dir_all(&data_dir) {
+        eprintln!("Failed to create backend data directory: {error}");
+        log_launcher(&format!("Failed to create backend data directory {:?}: {error}", data_dir));
+        return None;
+    }
+    if legacy_chrome_user_data_root.exists() {
+        match migrate_chrome_user_data(&legacy_chrome_user_data_root, &chrome_user_data_root) {
+            Ok(migrated_roles) if migrated_roles > 0 => {
+                log_launcher(&format!(
+                    "Migrated {migrated_roles} Chrome user data profile(s) from {:?} to {:?}",
+                    legacy_chrome_user_data_root, chrome_user_data_root
+                ));
+            }
+            Ok(_) => {}
+            Err(error) => {
+                log_launcher(&format!(
+                    "Failed to migrate Chrome user data from {:?} to {:?}: {error}",
+                    legacy_chrome_user_data_root, chrome_user_data_root
+                ));
+            }
+        }
+    }
+
+    let stdout = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(logs_dir.join("backend.stdout.log"))
+        .ok();
+    let stderr = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(logs_dir.join("backend.stderr.log"))
+        .ok();
+
+    println!("Starting bundled backend from: {:?}", backend_entry);
+    log_launcher(&format!("Starting bundled backend from: {:?}", backend_entry));
+    log_launcher(&format!("Node binary: {:?}", node_path));
+    log_launcher(&format!("Backend working directory: {:?}", app_root));
+    log_launcher(&format!("Backend database path: {:?}", data_dir.join("ali-ai-agent-system.sqlite")));
+    log_launcher(&format!("Chrome user data root: {:?}", chrome_user_data_root));
+    let mut command = Command::new(node_path);
+    command
+        .arg(backend_entry)
+        .current_dir(app_root)
+        .env("NODE_ENV", "production")
+        .env("API_HOST", "127.0.0.1")
+        .env("API_PORT", "3001")
+        .env("DB_PATH", data_dir.join("ali-ai-agent-system.sqlite"))
+        .env("CHROME_USER_DATA_ROOT", &chrome_user_data_root);
+
+    if let Some(file) = stdout {
+        command.stdout(Stdio::from(file));
+    } else {
+        command.stdout(Stdio::null());
+    }
+
+    if let Some(file) = stderr {
+        command.stderr(Stdio::from(file));
+    } else {
+        command.stderr(Stdio::null());
+    }
+
+    match command.spawn() {
+        Ok(child) => {
+            log_launcher(&format!("Bundled backend spawned with pid {}", child.id()));
+            Some(child)
+        }
+        Err(error) => {
+            eprintln!("Failed to start bundled backend: {error}");
+            log_launcher(&format!("Failed to start bundled backend: {error}"));
+            None
+        }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn migrate_chrome_user_data(
+    legacy_root: &std::path::Path,
+    stable_root: &std::path::Path,
+) -> std::io::Result<usize> {
+    let mut migrated_roles = 0;
+
+    for entry in std::fs::read_dir(legacy_root)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_dir() {
+            continue;
+        }
+
+        let source = entry.path();
+        let target = stable_root.join(entry.file_name());
+        if target.exists() {
+            continue;
+        }
+
+        copy_dir_all(&source, &target)?;
+        migrated_roles += 1;
+    }
+
+    Ok(migrated_roles)
+}
+
+#[cfg(not(debug_assertions))]
+fn copy_dir_all(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(target)?;
+
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+
+        if file_type.is_dir() {
+            copy_dir_all(&source_path, &target_path)?;
+        } else if file_type.is_file() {
+            std::fs::copy(&source_path, &target_path)?;
+        } else if file_type.is_symlink() {
+            if let Ok(link_target) = std::fs::read_link(&source_path) {
+                let _ = std::os::unix::fs::symlink(link_target, &target_path);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 
 #[tauri::command]
 fn app_health() -> &'static str {

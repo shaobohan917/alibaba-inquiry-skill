@@ -8,6 +8,7 @@ import {
   type AgentStatus,
   type LogEntry,
 } from '../api/agents';
+import { waitForApiHealth } from '../services/api';
 
 interface AgentProfile {
   id: string;
@@ -36,9 +37,10 @@ interface AgentState {
   // UI 状态
   loading: boolean;
   error: string | null;
+  fetchFailed: boolean;
 
   // Actions
-  fetchStatus: () => Promise<void>;
+  fetchStatus: (showError?: boolean) => Promise<void>;
   startAgent: (role: string) => Promise<void>;
   stopAgent: (role: string) => Promise<void>;
   subscribeLogs: (role: string) => void;
@@ -59,6 +61,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   fetchStatus: async (showError = false) => {
     set({ loading: true, error: null });
     try {
+      const healthy = await waitForApiHealth();
+      if (!healthy) {
+        throw new Error('后端 API 服务未就绪，请查看 ~/Library/Application Support/com.opc.ali-ai-agent-system/logs/backend-launcher.log');
+      }
       const agents = await getAgentStatus();
       set({ agents, loading: false, fetchFailed: false });
     } catch (error) {

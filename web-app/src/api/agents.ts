@@ -1,4 +1,6 @@
-const BASE_URL = 'http://localhost:3001';
+import { API_BASE_URL } from '../services/api';
+
+const BASE_URL = API_BASE_URL;
 
 export interface AgentStatus {
   role: string;

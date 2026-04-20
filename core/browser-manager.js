@@ -1,6 +1,7 @@
 const { chromium } = require('playwright');
 const { execSync, spawn } = require('child_process');
 const CookieStore = require('./cookie-store');
+const path = require('path');
 
 /**
  * 浏览器管理器
@@ -10,10 +11,12 @@ class BrowserManager {
   constructor(options = {}) {
     // 支持按角色使用不同的用户数据目录
     const role = options.role || 'default';
+    const defaultUserDataRoot = process.env.CHROME_USER_DATA_ROOT
+      || path.join(__dirname, '..', '.chrome-user-data');
     this.options = {
       cdpPort: options.cdpPort || 9222,
       // 不同角色使用不同的浏览器用户数据目录，实现账号隔离
-      userDir: options.userDir || path.join(__dirname, '..', '.chrome-user-data', role),
+      userDir: options.userDir || path.join(defaultUserDataRoot, role),
       autoStart: options.autoStart !== false,
       ...options
     };
@@ -225,8 +228,6 @@ class BrowserManager {
   }
 }
 
-// 需要引入 path 模块
-const path = require('path');
 const fs = require('fs');
 
 module.exports = BrowserManager;

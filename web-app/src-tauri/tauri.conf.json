@@ -5,7 +5,7 @@
   "identifier": "com.opc.ali-ai-agent-system",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build && npm run prepare:backend-bundle",
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420"
   },
@@ -40,6 +40,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": {
+      "resources/backend-runtime.tar.gz": "backend-runtime.tar.gz"
+    },
     "publisher": "OPC",
     "category": "Business",
     "shortDescription": "阿里国际站 AI 智能体协同系统 - 企业级桌面应用",

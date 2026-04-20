@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '');
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '');
 
 type QueryValue = string | number | boolean | null | undefined;
 
@@ -50,6 +50,19 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   return payload.data;
 }
 
+export async function waitForApiHealth(timeoutMs = 10000, intervalMs = 500): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    if (await checkApiHealth()) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  return false;
+}
+
 export function buildQuery(params: Record<string, QueryValue> = {}) {
   const query = new URLSearchParams();
 
@@ -69,4 +82,21 @@ async function parseJson<T>(response: Response): Promise<T | null> {
     return null;
   }
   return JSON.parse(text) as T;
+}
+
+async function checkApiHealth(): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 1000);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    return response.ok;
+  } catch {
+    return false;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
